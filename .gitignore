@@ -1,1 +1,4 @@
-__pycache__/ 
+echo datos_ecotech.json >> .gitignore
+git add .
+git commit -m "Feat: Añadida persistencia de datos en JSON"
+git push
