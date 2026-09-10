@@ -7,7 +7,8 @@ class RegistroTiempo:
         self._id_registro = id_registro
         self._empleado = empleado
         self._proyecto = proyecto
-        self._horas_trabajadas = horas_trabajadas
+        # Usar la propiedad 'horas_trabajadas' ejecuta la validación del setter durante la creación
+        self.horas_trabajadas = horas_trabajadas  
         self._fecha = fecha if fecha else datetime.now().strftime("%Y-%m-%d")
         self._descripcion = descripcion
 
