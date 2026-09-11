@@ -1,0 +1,31 @@
+{
+    "empleados": [
+        {
+            "tipo": "gerente",
+            "id_usuario": 1,
+            "nombre": "Sergio Ruiz",
+            "email": "ksbdQd@msldn-d",
+            "tarifa_hora": -42897247.0,
+            "cargo": "Gerente",
+            "bono_liderazgo": -999.0
+        },
+        {
+            "tipo": "empleado",
+            "id_usuario": 2,
+            "nombre": "pedro peres",
+            "email": "kjsbc@fddd.d",
+            "tarifa_hora": -222.0,
+            "cargo": "operario"
+        }
+    ],
+    "departamentos": [
+        {
+            "id_departamento": 1,
+            "nombre": "RRHH",
+            "id_gerente": null,
+            "ids_empleados": []
+        }
+    ],
+    "proyectos": [],
+    "registros_tiempo": []
+}
