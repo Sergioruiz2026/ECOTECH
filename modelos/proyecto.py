@@ -1,3 +1,6 @@
+#Representa un proyecto de ECOTECH. Maneja presupuestos, 
+#estado del proyecto y lista de empleados o gerentes asignados.
+
 from typing import List
 from modelos.empleado import Empleado
 

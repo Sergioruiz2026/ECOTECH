@@ -1,3 +1,7 @@
+#Incluye un menú interactivo en consola que permite gestionar empleados, gerentes,
+#departamentos, proyectos y registros de tiempo interactuando directamente 
+#con todas las clases creadas.
+
 import sys
 from modelos import Empleado, Gerente, Departamento, Proyecto, RegistroTiempo, guardar_datos, cargar_datos
 

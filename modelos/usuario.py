@@ -1,10 +1,14 @@
+#Esta clase define las propiedades comunes a cualquier persona dentro del sistema.
+
 class Usuario:
     def __init__(self, id_usuario: int, nombre: str, email: str):
         self._id_usuario = id_usuario
         self._nombre = nombre
         self._email = email
 
-    # Getters y Setters
+    # Getters y Setters:método que se utilizan en POO para consultar y 
+    # modificar los atributos de una clase de manera controlada.
+    
     @property
     def id_usuario(self) -> int:
         return self._id_usuario

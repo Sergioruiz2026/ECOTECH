@@ -1,3 +1,5 @@
+#Gerente hereda de Empleado e incluye la gestión de un departamento y bonificaciones.
+
 from modelos.empleado import Empleado
 
 class Gerente(Empleado):

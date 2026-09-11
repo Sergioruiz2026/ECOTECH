@@ -1,3 +1,6 @@
+#Verifica la creación de objetos, validaciones, herencia, 
+#cálculo de costos e interacciones entre clases.
+
 import unittest
 from modelos import Empleado, Gerente, Departamento, Proyecto, RegistroTiempo
 

@@ -1,3 +1,6 @@
+#Esta clase representa un departamento de la empresa (ej. Tecnología, Operaciones), 
+# el cual cuenta con un gerente a cargo y una lista de empleados asociados.
+
 from typing import List, Optional
 from modelos.empleado import Empleado
 from modelos.gerente import Gerente

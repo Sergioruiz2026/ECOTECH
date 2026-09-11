@@ -1,3 +1,5 @@
+#Para facilitar las importaciones en main.py, abre el archivo modelos/__init__.py
+
 from modelos.usuario import Usuario
 from modelos.empleado import Empleado
 from modelos.gerente import Gerente

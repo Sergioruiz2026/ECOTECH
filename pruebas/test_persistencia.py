@@ -1,3 +1,6 @@
+#Verifica la escritura y lectura de archivos sin alterar tus datos reales 
+#de producción usando un archivo de prueba temporal.
+
 import os
 import unittest
 import modelos.persistencia as persistencia

@@ -1,3 +1,6 @@
+#Relaciona a un Empleado con un Proyecto registrando las horas dedicadas y 
+#calculando el costo total derivado de la tarifa por hora del empleado.
+
 from datetime import datetime
 from modelos.empleado import Empleado
 from modelos.proyecto import Proyecto

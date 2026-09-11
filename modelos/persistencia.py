@@ -1,3 +1,5 @@
+#Con este archivo manejamos la conversión de objetos a diccionarios JSON y viceversa.
+
 import json
 import os
 from typing import List, Dict, Tuple

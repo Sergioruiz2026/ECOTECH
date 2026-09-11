@@ -1,3 +1,6 @@
+#Empleado hereda de Usuario e incluye atributos específicos de trabajo,
+# como el cargo y la tarifa por hora.
+
 from modelos.usuario import Usuario
 
 class Empleado(Usuario):
