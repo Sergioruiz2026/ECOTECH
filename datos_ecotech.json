@@ -4,7 +4,7 @@
             "tipo": "gerente",
             "id_usuario": 1,
             "nombre": "Sergio Ruiz",
-            "email": "ksbdqd@msldn-d.com",
+            "email": "67763a393b1204ca@msldn-d.com",
             "tarifa_hora": 42897247.0,
             "cargo": "Gerente",
             "bono_liderazgo": 999.0
@@ -13,7 +13,7 @@
             "tipo": "empleado",
             "id_usuario": 2,
             "nombre": "pedro peres",
-            "email": "kjsbc@fddd.d",
+            "email": "08e8ade6151117c8@fddd.d",
             "tarifa_hora": 222.0,
             "cargo": "operario"
         },
@@ -21,9 +21,17 @@
             "tipo": "empleado",
             "id_usuario": 3,
             "nombre": "Camila Estephania Carmona Carmona",
-            "email": "dggss@jhshds.aaa",
+            "email": "2362be31648db9e5@jhshds.aaa",
             "tarifa_hora": 111.0,
             "cargo": "tesorero"
+        },
+        {
+            "tipo": "empleado",
+            "id_usuario": 4,
+            "nombre": "Loreto Oyarzo",
+            "email": "ea8c352e454a7247@gmail.cl",
+            "tarifa_hora": 25000.0,
+            "cargo": "Desarrollador"
         }
     ],
     "departamentos": [
@@ -48,6 +56,12 @@
         {
             "id_departamento": 4,
             "nombre": "vvvg",
+            "id_gerente": null,
+            "ids_empleados": []
+        },
+        {
+            "id_departamento": 5,
+            "nombre": "Administracion",
             "id_gerente": null,
             "ids_empleados": []
         }

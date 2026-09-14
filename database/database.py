@@ -9,7 +9,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "ecotech.db")
 
 
 class Database:
-    """Clase encargada de gestionar la conexión y creación de tablas en SQLite."""
+    
+    #Clase encargada de gestionar la conexión y creación de tablas en SQLite.
 
     def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
@@ -28,6 +29,7 @@ class Database:
             cursor = conn.cursor()
 
             # Tabla Usuarios (Clase Base)
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +39,7 @@ class Database:
             """)
 
             # Tabla Empleados (Hereda atributos de Usuario)
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS empleados (
                     id_usuario INTEGER PRIMARY KEY,
