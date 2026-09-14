@@ -38,16 +38,18 @@ class Usuario:
         self._email = valor.strip().lower()
 
     def obtener_email_cifrado(self) -> str:
-        """
-        Retorna el correo con la parte antes del @ cifrada mediante SHA-256 
-        para almacenamiento seguro en la base de datos.
-        """
+        
+     #Retorna el correo con la parte antes del @ cifrada mediante SHA-256 
+     #para almacenamiento seguro en la base de datos.
+      
         partes = self._email.split("@")
         if len(partes) != 2:
             return self._email
 
         usuario_local, dominio = partes[0], partes[1]
+        
         # Generar hash SHA-256 de la parte previa al @
+        
         hash_local = hashlib.sha256(usuario_local.encode("utf-8")).hexdigest()[:16] # Guardamos los primeros 16 caracteres
         return f"{hash_local}@{dominio}"
 

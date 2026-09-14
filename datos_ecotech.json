@@ -4,7 +4,7 @@
             "tipo": "gerente",
             "id_usuario": 1,
             "nombre": "Sergio Ruiz",
-            "email": "ksbdQd@msldn-d",
+            "email": "ksbdqd@msldn-d.com",
             "tarifa_hora": -42897247.0,
             "cargo": "Gerente",
             "bono_liderazgo": -999.0
@@ -16,12 +16,26 @@
             "email": "kjsbc@fddd.d",
             "tarifa_hora": -222.0,
             "cargo": "operario"
+        },
+        {
+            "tipo": "empleado",
+            "id_usuario": 3,
+            "nombre": "Camila Estephania Carmona Carmona",
+            "email": "dggss@jhshds.aaa",
+            "tarifa_hora": -111.0,
+            "cargo": "tesorero"
         }
     ],
     "departamentos": [
         {
             "id_departamento": 1,
             "nombre": "RRHH",
+            "id_gerente": null,
+            "ids_empleados": []
+        },
+        {
+            "id_departamento": 2,
+            "nombre": "rrhh",
             "id_gerente": null,
             "ids_empleados": []
         }
