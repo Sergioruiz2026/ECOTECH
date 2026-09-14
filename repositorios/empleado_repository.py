@@ -1,32 +1,31 @@
-#Maneja la inserción en cascada para Empleado y Gerente
-#respetando la herencia en la base de datos
-
 from typing import List, Optional
 from repositorios.repositorio_base import RepositorioBase
 from modelos.empleado import Empleado
 from modelos.gerente import Gerente
 
+# Clase que representa un repositorio para manejar operaciones CRUD de empleados
+# en la base de datos, incluyendo la gestión de gerentes.
 
 class EmpleadoRepository(RepositorioBase):
 
     def crear(self, empleado: Empleado) -> Empleado:
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
-            # 1. Insertar en tabla base Usuarios
+            # 1. Insertar correo cifrado en la tabla base usuarios
             cursor.execute(
                 "INSERT INTO usuarios (nombre, email) VALUES (?, ?)",
-                (empleado.nombre, empleado.email)
+                (empleado.nombre, empleado.obtener_email_cifrado())
             )
             id_u = cursor.lastrowid
             empleado._id_usuario = id_u
 
-            # 2. Insertar en tabla Empleados
+            # 2. Insertar en tabla empleados
             cursor.execute(
                 "INSERT INTO empleados (id_usuario, cargo, tarifa_hora) VALUES (?, ?, ?)",
                 (id_u, empleado.cargo, empleado.tarifa_hora)
             )
 
-            # 3. Si es Gerente, insertar también en la tabla Gerentes
+            # 3. Si es un Gerente, insertar también en gerentes
             if isinstance(empleado, Gerente):
                 cursor.execute(
                     "INSERT INTO gerentes (id_usuario, bono_liderazgo) VALUES (?, ?)",
@@ -76,7 +75,7 @@ class EmpleadoRepository(RepositorioBase):
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE usuarios SET nombre = ?, email = ? WHERE id_usuario = ?",
-                           (empleado.nombre, empleado.email, empleado.id_usuario))
+                           (empleado.nombre, empleado.obtener_email_cifrado(), empleado.id_usuario))
             cursor.execute("UPDATE empleados SET cargo = ?, tarifa_hora = ? WHERE id_usuario = ?",
                            (empleado.cargo, empleado.tarifa_hora, empleado.id_usuario))
             if isinstance(empleado, Gerente):

@@ -1,18 +1,21 @@
-#Maneja la persistencia de la entidad base Usuario
-
 from typing import List, Optional
 from repositorios.repositorio_base import RepositorioBase
 from modelos.usuario import Usuario
 
+# Clase que representa un repositorio para manejar operaciones CRUD de usuarios
+# en la base de datos.
 
 class UsuarioRepository(RepositorioBase):
 
     def crear(self, usuario: Usuario) -> Usuario:
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
+            
+            # Se usa obtener_email_cifrado() para guardar la versión cifrada antes del @
+            
             cursor.execute(
                 "INSERT INTO usuarios (nombre, email) VALUES (?, ?)",
-                (usuario.nombre, usuario.email)
+                (usuario.nombre, usuario.obtener_email_cifrado())
             )
             usuario._id_usuario = cursor.lastrowid
             conn.commit()
@@ -40,9 +43,10 @@ class UsuarioRepository(RepositorioBase):
     def actualizar(self, usuario: Usuario) -> bool:
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
+            # Al actualizar también nos aseguramos de guardar la versión cifrada
             cursor.execute(
                 "UPDATE usuarios SET nombre = ?, email = ? WHERE id_usuario = ?",
-                (usuario.nombre, usuario.email, usuario.id_usuario)
+                (usuario.nombre, usuario.obtener_email_cifrado(), usuario.id_usuario)
             )
             conn.commit()
             return cursor.rowcount > 0
