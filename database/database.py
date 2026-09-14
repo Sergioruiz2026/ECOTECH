@@ -41,7 +41,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS empleados (
                     id_usuario INTEGER PRIMARY KEY,
                     cargo TEXT NOT NULL,
-                    tarifa_hora REAL NOT NULL CHECK(tarifa_hora >= 0),
+                    tarifa_hora REAL NOT NULL CHECK(tarifa_hora > 0),
                     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
                 );
             """)
@@ -50,7 +50,7 @@ class Database:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS gerentes (
                     id_usuario INTEGER PRIMARY KEY,
-                    bono_liderazgo REAL DEFAULT 0.0 CHECK(bono_liderazgo >= 0),
+                    bono_liderazgo REAL DEFAULT 1.0 CHECK(bono_liderazgo > 0),
                     FOREIGN KEY (id_usuario) REFERENCES empleados(id_usuario) ON DELETE CASCADE
                 );
             """)

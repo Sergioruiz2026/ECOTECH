@@ -5,16 +5,16 @@
             "id_usuario": 1,
             "nombre": "Sergio Ruiz",
             "email": "ksbdqd@msldn-d.com",
-            "tarifa_hora": -42897247.0,
+            "tarifa_hora": 42897247.0,
             "cargo": "Gerente",
-            "bono_liderazgo": -999.0
+            "bono_liderazgo": 999.0
         },
         {
             "tipo": "empleado",
             "id_usuario": 2,
             "nombre": "pedro peres",
             "email": "kjsbc@fddd.d",
-            "tarifa_hora": -222.0,
+            "tarifa_hora": 222.0,
             "cargo": "operario"
         },
         {
@@ -22,7 +22,7 @@
             "id_usuario": 3,
             "nombre": "Camila Estephania Carmona Carmona",
             "email": "dggss@jhshds.aaa",
-            "tarifa_hora": -111.0,
+            "tarifa_hora": 111.0,
             "cargo": "tesorero"
         }
     ],
@@ -36,6 +36,18 @@
         {
             "id_departamento": 2,
             "nombre": "rrhh",
+            "id_gerente": null,
+            "ids_empleados": []
+        },
+        {
+            "id_departamento": 3,
+            "nombre": "qq",
+            "id_gerente": 1,
+            "ids_empleados": []
+        },
+        {
+            "id_departamento": 4,
+            "nombre": "vvvg",
             "id_gerente": null,
             "ids_empleados": []
         }

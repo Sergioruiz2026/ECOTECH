@@ -23,7 +23,7 @@ def guardar_datos(empleados: List, departamentos: List, proyectos: List, registr
             "tipo": "gerente" if es_gerente else "empleado",
             "id_usuario": emp.id_usuario,
             "nombre": emp.nombre,
-            "email": emp.email,
+            "email": emp.obtener_email_cifrado(),
             "tarifa_hora": emp.tarifa_hora,
             "cargo": getattr(emp, "cargo", "Empleado")
         }
@@ -81,7 +81,7 @@ def cargar_datos() -> Tuple[List, List, List, List]:
     # Deserializar Empleados / Gerentes
     for d in datos.get("empleados", []):
         if d.get("tipo") == "gerente":
-            emp = Gerente(d["id_usuario"], d["nombre"], d["email"], d["tarifa_hora"], d.get("bono_liderazgo", 0.0))
+            emp = Gerente(d["id_usuario"], d["nombre"], d["email"], d["tarifa_hora"], d.get("bono_liderazgo", 1.0))
         else:
             emp = Empleado(d["id_usuario"], d["nombre"], d["email"], d["cargo"], d["tarifa_hora"])
         empleados.append(emp)

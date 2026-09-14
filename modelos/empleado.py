@@ -8,7 +8,7 @@ class Empleado(Usuario):
         # Invocamos al constructor de la clase base (Usuario)
         super().__init__(id_usuario, nombre, email)
         self._cargo = cargo
-        self._tarifa_hora = tarifa_hora
+        self.tarifa_hora = tarifa_hora
 
     @property
     def cargo(self) -> str:
@@ -24,12 +24,14 @@ class Empleado(Usuario):
 
     @tarifa_hora.setter
     def tarifa_hora(self, nueva_tarifa: float):
-        if nueva_tarifa >= 0:
+        if nueva_tarifa > 0:
             self._tarifa_hora = nueva_tarifa
         else:
-            raise ValueError("La tarifa por hora no puede ser negativa.")
+            raise ValueError("La tarifa por hora debe ser mayor que cero.")
 
     def obtener_detalles(self) -> str:
-        """Polimorfismo: Extiende la información para incluir datos del cargo."""
+        
+        #Polimorfismo: Extiende la información para incluir datos del cargo.
+        
         info_base = super().obtener_detalles()
         return f"{info_base} | Cargo: {self._cargo} | Tarifa/h: ${self._tarifa_hora:.2f}"

@@ -20,12 +20,18 @@ def auto_guardar():
     guardar_datos(empleados, departamentos, proyectos, registros_tiempo)
 
 
-def solicitar_numero(mensaje: str, tipo=float):
+def solicitar_numero(mensaje: str, tipo=float, minimo=None):
     while True:
         try:
-            return tipo(input(mensaje))
+            valor = tipo(input(mensaje))
+            if minimo is not None and valor <= minimo:
+                raise ValueError
+            return valor
         except ValueError:
-            print("Entrada no válida. Ingrese un número.")
+            if minimo is None:
+                print("Entrada no válida. Ingrese un número.")
+            else:
+                print(f"Entrada no válida. Ingrese un número mayor que {minimo}.")
 
 
 def registrar_empleado_o_gerente():
@@ -36,14 +42,14 @@ def registrar_empleado_o_gerente():
 
     nombre = input("Nombre completo: ").strip()
     email = input("Correo electrónico: ").strip()
-    tarifa = solicitar_numero("Tarifa por hora ($): ", float)
+    tarifa = solicitar_numero("Tarifa por hora ($): ", float, minimo=0)
 
     if tipo == "1":
         cargo = input("Cargo / Puesto: ").strip()
         nuevo = Empleado(id_usuario_seq, nombre, email, cargo, tarifa)
         empleados.append(nuevo)
     elif tipo == "2":
-        bono = solicitar_numero("Bono de liderazgo ($): ", float)
+        bono = solicitar_numero("Bono de liderazgo ($): ", float, minimo=0)
         nuevo = Gerente(id_usuario_seq, nombre, email, tarifa_hora=tarifa, bono_liderazgo=bono)
         empleados.append(nuevo)
     else:
@@ -65,7 +71,13 @@ def crear_departamento():
     if gerentes_disponibles:
         for idx, g in enumerate(gerentes_disponibles, 1):
             print(f"{idx}. {g.nombre}")
-        if input("¿Asignar gerente? (s/n): ").strip().lower() == "s":
+        while True:
+            asignar_gerente = input("¿Asignar gerente? (s/n): ").strip().lower()
+            if asignar_gerente in ("s", "n"):
+                break
+            print("Respuesta no válida. Escriba 's' para sí o 'n' para no.")
+
+        if asignar_gerente == "s":
             idx_g = solicitar_numero("Número de gerente: ", int) - 1
             if 0 <= idx_g < len(gerentes_disponibles):
                 gerente_asignado = gerentes_disponibles[idx_g]

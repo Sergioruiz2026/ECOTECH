@@ -2,10 +2,12 @@
 #de producción usando un archivo de prueba temporal.
 
 import os
+import json
 import unittest
 import modelos.persistencia as persistencia
 from modelos import Empleado, Gerente, Departamento, Proyecto, RegistroTiempo
 
+# test_persistencia realiza pruebas unitarias para la persistencia de datos en EcoTech.
 
 class TestPersistenciaEcoTech(unittest.TestCase):
 
@@ -35,6 +37,12 @@ class TestPersistenciaEcoTech(unittest.TestCase):
         persistencia.guardar_datos([self.emp, self.ger], [self.depto], [self.proy], [self.reg])
         self.assertTrue(os.path.exists(self.archivo_temp))
 
+        with open(self.archivo_temp, "r", encoding="utf-8") as archivo:
+            datos_guardados = json.load(archivo)
+        correo_guardado = datos_guardados["empleados"][0]["email"]
+        self.assertNotEqual(correo_guardado, self.emp.email)
+        self.assertEqual(correo_guardado, self.emp.obtener_email_cifrado())
+
         # 2. Cargar
         empleados_c, deptos_c, proys_c, regs_c = persistencia.cargar_datos()
 
@@ -48,6 +56,7 @@ class TestPersistenciaEcoTech(unittest.TestCase):
         emp_rec = empleados_c[0]
         self.assertEqual(emp_rec.nombre, "Laura Torres")
         self.assertEqual(emp_rec.tarifa_hora, 30.0)
+        self.assertEqual(emp_rec.obtener_email_cifrado(), correo_guardado)
 
 
 if __name__ == "__main__":

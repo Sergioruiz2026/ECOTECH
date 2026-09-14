@@ -6,7 +6,12 @@ import hashlib
 
 class Usuario:
     # Expresión regular para validar formato estándar de e-mail
-    PATRON_EMAIL = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    PATRON_EMAIL = re.compile(
+        r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+        r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+        r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$"
+    )
+    PATRON_HASH_EMAIL = re.compile(r"^[0-9a-f]{16}$")
 
     def __init__(self, id_usuario: int, nombre: str, email: str):
         self._id_usuario = id_usuario
@@ -33,9 +38,13 @@ class Usuario:
 
     @email.setter
     def email(self, valor: str):
-        if not re.match(self.PATRON_EMAIL, valor):
+        if not isinstance(valor, str):
+            raise ValueError("El correo electrónico debe ser una cadena de texto válida.")
+
+        valor = valor.strip().lower()
+        if not self.PATRON_EMAIL.fullmatch(valor):
             raise ValueError(f"El correo electrónico '{valor}' no es válido. Debe tener un formato correcto (ej: usuario@dominio.com).")
-        self._email = valor.strip().lower()
+        self._email = valor
 
     def obtener_email_cifrado(self) -> str:
         
@@ -47,6 +56,8 @@ class Usuario:
             return self._email
 
         usuario_local, dominio = partes[0], partes[1]
+        if self.PATRON_HASH_EMAIL.fullmatch(usuario_local):
+            return self._email
         
         # Generar hash SHA-256 de la parte previa al @
         

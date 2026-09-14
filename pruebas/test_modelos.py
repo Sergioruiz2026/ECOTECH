@@ -22,10 +22,16 @@ class TestModelosEcoTech(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.empleado.tarifa_hora = -10.0
 
+        with self.assertRaises(ValueError):
+            Empleado(3, "Luis Pérez", "luis@ecotech.com", "Técnico", 0.0)
+
     def test_herencia_gerente(self):
         """Verifica que Gerente hereda de Empleado y mantiene su comportamiento."""
         self.assertEqual(self.gerente.cargo, "Gerente")
         self.assertEqual(self.gerente.bono_liderazgo, 500.0)
+
+        with self.assertRaises(ValueError):
+            Gerente(3, "Luis Pérez", "luis@ecotech.com", 40.0, bono_liderazgo=0.0)
 
         # Asignar empleado a cargo
         self.gerente.asignar_empleado(self.empleado)
