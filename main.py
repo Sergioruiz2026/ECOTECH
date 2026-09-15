@@ -62,7 +62,7 @@ class MenuApp:
                 if self.iniciar_sesion():
                     self.ejecutar_menu_principal()
             elif opcion == "2":
-                self.registrar_usuario()
+                self.registrar_usuario(permitir_admin=True)
             elif opcion == "0":
                 print("\n¡Gracias por utilizar el sistema de ECOTECH Solutions!")
                 break
@@ -129,10 +129,13 @@ class MenuApp:
             es_primer_usuario = self.repo_usuario.contar() == 0
             rol = "usuario"
             if es_primer_usuario:
-                rol = "admin"
-                print("El primer usuario será administrador para configurar el sistema.")
-            elif permitir_admin:
-                rol = input("Rol (usuario/admin): ").strip().lower()
+                print("Este es el primer usuario. Puede registrarlo como administrador o usuario.")
+            if permitir_admin:
+                while True:
+                    rol = input("Rol (usuario/admin): ").strip().lower()
+                    if rol in Usuario.ROLES_VALIDOS:
+                        break
+                    print("Rol inválido. Escriba 'usuario' o 'admin'.")
             nuevo_usuario = Usuario(0, nombre, email, rol)
             self.configurar_password(nuevo_usuario)
             if self.repo_usuario.crear(nuevo_usuario):
