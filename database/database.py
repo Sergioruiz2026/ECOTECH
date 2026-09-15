@@ -34,8 +34,25 @@ class Database:
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL
+                    email TEXT UNIQUE NOT NULL,
+                    rol TEXT NOT NULL DEFAULT 'usuario' CHECK(rol IN ('usuario', 'admin')),
+                    password_hash TEXT
                 );
+            """)
+
+            columnas_usuario = [fila[1] for fila in cursor.execute("PRAGMA table_info(usuarios)")]
+            if "rol" not in columnas_usuario:
+                cursor.execute(
+                    "ALTER TABLE usuarios ADD COLUMN rol TEXT NOT NULL DEFAULT 'usuario' "
+                    "CHECK(rol IN ('usuario', 'admin'))"
+                )
+            if "password_hash" not in columnas_usuario:
+                cursor.execute("ALTER TABLE usuarios ADD COLUMN password_hash TEXT")
+            cursor.execute("""
+                UPDATE usuarios
+                SET rol = 'admin'
+                WHERE id_usuario = (SELECT MIN(id_usuario) FROM usuarios)
+                  AND NOT EXISTS (SELECT 1 FROM usuarios WHERE rol = 'admin')
             """)
 
             # Tabla Empleados (Hereda atributos de Usuario)

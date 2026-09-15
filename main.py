@@ -3,6 +3,10 @@
 #con todas las clases creadas.
 
 import os
+import getpass
+import secrets
+import sqlite3
+import time
 from datetime import datetime
 from database.database import Database
 
@@ -23,6 +27,7 @@ from repositorios.usuario_repository import UsuarioRepository
 # Importación del Módulo de Informes
 from informes.informe_pdf import InformePDF
 from informes.informe_excel import InformeExcel
+from servicios.correo import enviar_codigo_verificacion
 
 def limpiar_pantalla():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -81,12 +86,41 @@ class MenuApp:
             # Consultar en la BD por el hash del correo
             conexion = self.repo_usuario.obtener_conexion()
             cursor = conexion.cursor()
-            cursor.execute("SELECT id_usuario, nombre, email FROM usuarios WHERE email = ?", (email_cifrado,))
+            cursor.execute("SELECT id_usuario, nombre, email, rol, password_hash FROM usuarios WHERE email = ?", (email_cifrado,))
             row = cursor.fetchone()
             conexion.close()
 
             if row:
-                self.usuario_actual = Usuario(row[0], row[1], email)
+                usuario = Usuario(row[0], row[1], email, row[3], row[4])
+                metodo = input("\n1. Contraseña\n2. Código enviado por correo\nSeleccione el método: ").strip()
+                if metodo == "1":
+                    if not usuario.password_hash:
+                        print("Esta cuenta aún no tiene contraseña. Cree una para continuar.")
+                        self.configurar_password(usuario)
+                    else:
+                        contraseña = getpass.getpass("Contraseña: ")
+                        if not usuario.verificar_contraseña(contraseña):
+                            raise ValueError("La contraseña es incorrecta.")
+                elif metodo == "2":
+                    codigo = f"{secrets.randbelow(1_000_000):06d}"
+                    expira_en = time.monotonic() + 600
+                    try:
+                        enviar_codigo_verificacion(email, codigo)
+                    except (RuntimeError, OSError) as error:
+                        raise ValueError(f"No se pudo enviar el código: {error}") from error
+                    print("Se envió un código de verificación a su correo.")
+                    codigo_ingresado = input("Código de verificación: ").strip()
+                    if time.monotonic() > expira_en:
+                        raise ValueError("El código de verificación expiró.")
+                    if codigo_ingresado != codigo:
+                        raise ValueError("El código de verificación es incorrecto.")
+                    if not usuario.password_hash:
+                        print("Configure una contraseña para proteger su cuenta.")
+                        self.configurar_password(usuario)
+                else:
+                    raise ValueError("Método de acceso inválido.")
+
+                self.usuario_actual = usuario
                 print(f"\n[ÉXITO] ¡Bienvenido(a), {self.usuario_actual.nombre}!")
                 pausar()
                 return True
@@ -94,26 +128,53 @@ class MenuApp:
                 print("\n[ERROR] Correo electrónico no registrado o credenciales inválidas.")
                 pausar()
                 return False
-        except ValueError as e:
+        except (ValueError, sqlite3.IntegrityError) as e:
             print(f"\n[ERROR DE VALIDACIÓN]: {e}")
             pausar()
             return False
 
-    def registrar_usuario(self):
+    def configurar_password(self, usuario: Usuario):
+        contraseña = getpass.getpass("Nueva contraseña (mínimo 8 caracteres): ")
+        confirmacion = getpass.getpass("Confirme la contraseña: ")
+        if contraseña != confirmacion:
+            raise ValueError("Las contraseñas no coinciden.")
+        usuario.establecer_contraseña(contraseña)
+        if usuario.id_usuario:
+            self.repo_usuario.actualizar_password(usuario.id_usuario, usuario.password_hash)
+
+    def registrar_usuario(self, permitir_admin: bool = False):
         limpiar_pantalla()
         print("--- REGISTRO DE NUEVO USUARIO ---")
         nombre = input("Nombre completo: ").strip()
         email = input("Correo electrónico: ").strip()
 
         try:
-            nuevo_usuario = Usuario(0, nombre, email)
+            es_primer_usuario = self.repo_usuario.contar() == 0
+            rol = "usuario"
+            if es_primer_usuario:
+                rol = "admin"
+                print("El primer usuario será administrador para configurar el sistema.")
+            elif permitir_admin:
+                rol = input("Rol (usuario/admin): ").strip().lower()
+            nuevo_usuario = Usuario(0, nombre, email, rol)
+            self.configurar_password(nuevo_usuario)
             if self.repo_usuario.crear(nuevo_usuario):
-                print(f"\n[ÉXITO] Usuario registrado correctamente. Ya puede iniciar sesión.")
+                print(f"\n[ÉXITO] Usuario registrado como {nuevo_usuario.rol}. Ya puede iniciar sesión.")
             else:
                 print("\n[ERROR] No se pudo completar el registro en la base de datos.")
-        except ValueError as e:
+        except (ValueError, sqlite3.IntegrityError) as e:
             print(f"\n[ERROR DE VALIDACIÓN]: {e}")
         pausar()
+
+    def es_admin(self) -> bool:
+        return self.usuario_actual is not None and self.usuario_actual.rol == "admin"
+
+    def verificar_admin(self) -> bool:
+        if self.es_admin():
+            return True
+        print("\n[ACCESO DENEGADO] Esta opción requiere permisos de administrador.")
+        pausar()
+        return False
 
     # ==========================================
     # MENÚ PRINCIPAL DEL SISTEMA
@@ -122,13 +183,20 @@ class MenuApp:
         while True:
             limpiar_pantalla()
             print("==================================================")
-            print(f" ECOTECH SOLUTIONS | Usuario Activo: {self.usuario_actual.nombre}")
+            print(f" ECOTECH SOLUTIONS | Usuario Activo: {self.usuario_actual.nombre} ({self.usuario_actual.rol})")
             print("==================================================")
-            print("1. Gestión de Empleados")
-            print("2. Gestión de Departamentos")
-            print("3. Gestión de Proyectos")
+            if self.es_admin():
+                print("1. Gestión de Empleados")
+                print("2. Gestión de Departamentos")
+                print("3. Gestión de Proyectos")
+            else:
+                print("1. Crear Empleado")
+                print("2. Crear Departamento")
+                print("3. Crear Proyecto")
             print("4. Registrar Horas de Trabajo (RegistroTiempo)")
             print("5. Exportar Informes (PDF / Excel)")
+            if self.es_admin():
+                print("6. Gestión de Usuarios")
             print("0. Cerrar Sesión")
             print("--------------------------------------------------")
             opcion = input("Seleccione una opción: ").strip()
@@ -143,6 +211,8 @@ class MenuApp:
                 self.menu_registro_tiempo()
             elif opcion == "5":
                 self.menu_informes()
+            elif opcion == "6" and self.es_admin():
+                self.menu_usuarios()
             elif opcion == "0":
                 print(f"\nCerrando sesión de {self.usuario_actual.nombre}...")
                 self.usuario_actual = None
@@ -152,6 +222,83 @@ class MenuApp:
                 print("Opción inválida. Intente nuevamente.")
                 pausar()
 
+    def menu_usuarios(self):
+        if not self.verificar_admin():
+            return
+        while True:
+            limpiar_pantalla()
+            print("--- GESTIÓN DE USUARIOS ---")
+            print("1. Registrar usuario o administrador")
+            print("2. Listar usuarios")
+            print("3. Modificar usuario")
+            print("4. Eliminar usuario")
+            print("0. Volver al Menú Principal")
+            opcion = input("\nSeleccione una opción: ").strip()
+
+            if opcion == "1":
+                self.registrar_usuario(permitir_admin=True)
+            elif opcion == "2":
+                for usuario in self.repo_usuario.obtener_todos():
+                    print(f"ID: {usuario.id_usuario} | Nombre: {usuario.nombre} | Rol: {usuario.rol}")
+                pausar()
+            elif opcion == "3":
+                self.modificar_usuario()
+            elif opcion == "4":
+                self.eliminar_usuario()
+            elif opcion == "0":
+                break
+            else:
+                print("Opción inválida.")
+                pausar()
+
+    def modificar_usuario(self):
+        if not self.verificar_admin():
+            return
+        try:
+            id_usuario = int(input("ID del usuario a modificar: "))
+            usuario = self.repo_usuario.obtener_por_id(id_usuario)
+            if not usuario:
+                print("Usuario no encontrado.")
+                pausar()
+                return
+
+            usuario.nombre = input(f"Nuevo nombre [{usuario.nombre}]: ").strip() or usuario.nombre
+            nuevo_email = input("Nuevo correo (ENTER para conservarlo): ").strip()
+            if nuevo_email:
+                usuario.email = nuevo_email
+            nuevo_rol = input(f"Nuevo rol [{usuario.rol}] (usuario/admin): ").strip().lower()
+            if nuevo_rol:
+                usuario.rol = nuevo_rol
+            cambiar_password = input("¿Cambiar contraseña? (s/n): ").strip().lower()
+            if cambiar_password == "s":
+                self.configurar_password(usuario)
+
+            if usuario.id_usuario == self.usuario_actual.id_usuario and usuario.rol != "admin":
+                raise ValueError("No puede quitarse sus propios permisos de administrador.")
+            self.repo_usuario.actualizar(usuario)
+            print("\n[ÉXITO] Usuario actualizado correctamente.")
+        except (ValueError, sqlite3.IntegrityError) as error:
+            print(f"\n[ERROR]: {error}")
+        pausar()
+
+    def eliminar_usuario(self):
+        if not self.verificar_admin():
+            return
+        try:
+            id_usuario = int(input("ID del usuario a eliminar: "))
+            usuario = self.repo_usuario.obtener_por_id(id_usuario)
+            if not usuario:
+                print("Usuario no encontrado.")
+            elif usuario.id_usuario == self.usuario_actual.id_usuario:
+                print("No puede eliminar su propia cuenta durante una sesión activa.")
+            elif usuario.rol == "admin" and self.repo_usuario.contar_admins() <= 1:
+                print("No se puede eliminar el último administrador.")
+            elif input(f"¿Eliminar a {usuario.nombre}? (s/n): ").strip().lower() == "s":
+                print("\n[ÉXITO] Usuario eliminado." if self.repo_usuario.eliminar(id_usuario) else "\n[ERROR] No se pudo eliminar el usuario.")
+        except ValueError:
+            print("\n[ERROR] El ID debe ser numérico.")
+        pausar()
+
     # ==========================================
     # 1. MENÚ EMPLEADOS
     # ==========================================
@@ -160,9 +307,10 @@ class MenuApp:
             limpiar_pantalla()
             print("--- GESTIÓN DE EMPLEADOS ---")
             print("1. Registrar Empleado / Gerente")
-            print("2. Buscar Empleado por ID")
-            print("3. Actualizar Empleado")
-            print("4. Eliminar Empleado")
+            if self.es_admin():
+                print("2. Buscar Empleado por ID")
+                print("3. Actualizar Empleado")
+                print("4. Eliminar Empleado")
             print("0. Volver al Menú Principal")
             opcion = input("\nSeleccione una opción: ").strip()
 
@@ -181,7 +329,7 @@ class MenuApp:
                     print(f"\n[ERROR DE VALIDACIÓN]: {e}")
                 pausar()
 
-            elif opcion == "2":
+            elif opcion == "2" and self.es_admin():
                 try:
                     id_emp = int(input("Ingrese el ID del empleado: "))
                     emp = self.repo_empleado.obtener_por_id(id_emp)
@@ -195,7 +343,7 @@ class MenuApp:
                     print("\nID debe ser un valor numérico.")
                 pausar()
 
-            elif opcion == "3":
+            elif opcion == "3" and self.es_admin():
                 try:
                     id_emp = int(input("Ingrese el ID del empleado a actualizar: "))
                     emp = self.repo_empleado.obtener_por_id(id_emp)
@@ -221,7 +369,7 @@ class MenuApp:
                     print(f"\n[ERROR]: {e}")
                 pausar()
 
-            elif opcion == "4":
+            elif opcion == "4" and self.es_admin():
                 try:
                     id_emp = int(input("Ingrese el ID del empleado a eliminar: "))
                     confirm = input(f"¿Está seguro de eliminar al empleado ID {id_emp}? (s/n): ").lower()
@@ -245,9 +393,10 @@ class MenuApp:
             limpiar_pantalla()
             print("--- GESTIÓN DE DEPARTAMENTOS ---")
             print("1. Crear Departamento")
-            print("2. Buscar Departamento por ID")
-            print("3. Actualizar Departamento")
-            print("4. Eliminar Departamento")
+            if self.es_admin():
+                print("2. Buscar Departamento por ID")
+                print("3. Actualizar Departamento")
+                print("4. Eliminar Departamento")
             print("0. Volver al Menú Principal")
             opcion = input("\nSeleccione una opción: ").strip()
 
@@ -264,7 +413,7 @@ class MenuApp:
                     print("\n[ERROR] ID de gerente inválido.")
                 pausar()
 
-            elif opcion == "2":
+            elif opcion == "2" and self.es_admin():
                 try:
                     id_d = int(input("ID del Departamento: "))
                     d = self.repo_departamento.obtener_por_id(id_d)
@@ -276,7 +425,7 @@ class MenuApp:
                     print("\nID inválido.")
                 pausar()
 
-            elif opcion == "3":
+            elif opcion == "3" and self.es_admin():
                 try:
                     id_d = int(input("ID del Departamento a actualizar: "))
                     d = self.repo_departamento.obtener_por_id(id_d)
@@ -292,7 +441,7 @@ class MenuApp:
                     print("\nEntrada inválida.")
                 pausar()
 
-            elif opcion == "4":
+            elif opcion == "4" and self.es_admin():
                 try:
                     id_d = int(input("ID del Departamento a eliminar: "))
                     if self.repo_departamento.eliminar(id_d):
@@ -314,9 +463,10 @@ class MenuApp:
             limpiar_pantalla()
             print("--- GESTIÓN DE PROYECTOS ---")
             print("1. Crear Proyecto")
-            print("2. Buscar Proyecto por ID")
-            print("3. Actualizar Proyecto")
-            print("4. Eliminar Proyecto")
+            if self.es_admin():
+                print("2. Buscar Proyecto por ID")
+                print("3. Actualizar Proyecto")
+                print("4. Eliminar Proyecto")
             print("0. Volver al Menú Principal")
             opcion = input("\nSeleccione una opción: ").strip()
 
@@ -334,7 +484,7 @@ class MenuApp:
                     print("\n[ERROR] Presupuesto inválido.")
                 pausar()
 
-            elif opcion == "2":
+            elif opcion == "2" and self.es_admin():
                 try:
                     id_p = int(input("ID del Proyecto: "))
                     p = self.repo_proyecto.obtener_por_id(id_p)
@@ -346,7 +496,7 @@ class MenuApp:
                     print("\nID inválido.")
                 pausar()
 
-            elif opcion == "3":
+            elif opcion == "3" and self.es_admin():
                 try:
                     id_p = int(input("ID del Proyecto a actualizar: "))
                     p = self.repo_proyecto.obtener_por_id(id_p)
@@ -367,7 +517,7 @@ class MenuApp:
                     print("\nEntrada inválida.")
                 pausar()
 
-            elif opcion == "4":
+            elif opcion == "4" and self.es_admin():
                 try:
                     id_p = int(input("ID del Proyecto a eliminar: "))
                     if self.repo_proyecto.eliminar(id_p):
