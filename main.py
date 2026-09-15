@@ -282,10 +282,24 @@ class MenuApp:
     # ==========================================
     # 1. MENÚ EMPLEADOS
     # ==========================================
+    def mostrar_empleados(self):
+        empleados = self.repo_empleado.obtener_todos()
+        print("\n--- EMPLEADOS REGISTRADOS ---")
+        if not empleados:
+            print("No hay empleados registrados.")
+            return
+        for empleado in empleados:
+            print(
+                f"ID: {empleado.id_usuario} | Nombre: {empleado.nombre} | "
+                f"Cargo: {empleado.cargo} | Tarifa/Hora: ${empleado.tarifa_hora:,.2f}"
+            )
+
     def menu_empleados(self):
         while True:
             limpiar_pantalla()
             print("--- GESTIÓN DE EMPLEADOS ---")
+            self.mostrar_empleados()
+            print("\n--- OPCIONES ---")
             print("1. Registrar Empleado / Gerente")
             if self.es_admin():
                 print("2. Buscar Empleado por ID")
@@ -368,10 +382,21 @@ class MenuApp:
     # ==========================================
     # 2. MENÚ DEPARTAMENTOS
     # ==========================================
+    def mostrar_departamentos(self):
+        departamentos = self.repo_departamento.obtener_todos()
+        print("\n--- DEPARTAMENTOS REGISTRADOS ---")
+        if not departamentos:
+            print("No hay departamentos registrados.")
+            return
+        for departamento in departamentos:
+            print(f"ID: {departamento.id_departamento} | Nombre: {departamento.nombre}")
+
     def menu_departamentos(self):
         while True:
             limpiar_pantalla()
             print("--- GESTIÓN DE DEPARTAMENTOS ---")
+            self.mostrar_departamentos()
+            print("\n--- OPCIONES ---")
             print("1. Crear Departamento")
             if self.es_admin():
                 print("2. Buscar Departamento por ID")
@@ -438,10 +463,24 @@ class MenuApp:
     # ==========================================
     # 3. MENÚ PROYECTOS
     # ==========================================
+    def mostrar_proyectos(self):
+        proyectos = self.repo_proyecto.obtener_todos()
+        print("\n--- PROYECTOS REGISTRADOS ---")
+        if not proyectos:
+            print("No hay proyectos registrados.")
+            return
+        for proyecto in proyectos:
+            print(
+                f"ID: {proyecto.id_proyecto} | Nombre: {proyecto.nombre} | "
+                f"Presupuesto: ${proyecto.presupuesto:,.2f} | Estado: {proyecto.estado}"
+            )
+
     def menu_proyectos(self):
         while True:
             limpiar_pantalla()
             print("--- GESTIÓN DE PROYECTOS ---")
+            self.mostrar_proyectos()
+            print("\n--- OPCIONES ---")
             print("1. Crear Proyecto")
             if self.es_admin():
                 print("2. Buscar Proyecto por ID")
@@ -515,29 +554,51 @@ class MenuApp:
     # 4. REGISTRO DE TIEMPO
     # ==========================================
     def menu_registro_tiempo(self):
-        limpiar_pantalla()
-        print("--- REGISTRAR HORAS TRABAJADAS ---")
-        try:
-            id_emp = int(input("ID del Empleado: "))
-            id_proy = int(input("ID del Proyecto: "))
-            horas = float(input("Horas trabajadas: "))
-            descripcion = input("Descripción de la tarea: ").strip()
-            fecha = datetime.now().strftime('%Y-%m-%d')
-
-            empleado = self.repo_empleado.obtener_por_id(id_emp)
-            proyecto = self.repo_proyecto.obtener_por_id(id_proy)
-            if not empleado or not proyecto:
-                raise ValueError("El empleado o el proyecto indicado no existe.")
-
-            reg = RegistroTiempo(0, empleado, proyecto, horas, fecha, descripcion)
-            self.repo_registro.crear(reg)
-            if reg.id_registro:
-                print(f"\n[ÉXITO] Registro de tiempo almacenado correctamente (ID: {reg.id_registro}).")
+        while True:
+            limpiar_pantalla()
+            print("--- REGISTRO DE HORAS TRABAJADAS ---")
+            self.mostrar_empleados()
+            self.mostrar_proyectos()
+            registros = self.repo_registro.obtener_todos()
+            print("\n--- REGISTROS DE TIEMPO ---")
+            if registros:
+                for registro in registros:
+                    print(registro)
             else:
-                print("\n[ERROR] No se pudo registrar las horas.")
-        except ValueError as e:
-            print(f"\n[ERROR DE ENTRADA O VALIDACIÓN]: {e}")
-        pausar()
+                print("No hay registros de tiempo.")
+            print("\n--- OPCIONES ---")
+            print("1. Registrar horas trabajadas")
+            print("0. Volver al Menú Principal")
+            opcion = input("\nSeleccione una opción: ").strip()
+
+            if opcion == "0":
+                break
+            if opcion != "1":
+                print("Opción inválida.")
+                pausar()
+                continue
+
+            try:
+                id_emp = int(input("ID del Empleado: "))
+                id_proy = int(input("ID del Proyecto: "))
+                horas = float(input("Horas trabajadas: "))
+                descripcion = input("Descripción de la tarea: ").strip()
+                fecha = datetime.now().strftime('%Y-%m-%d')
+
+                empleado = self.repo_empleado.obtener_por_id(id_emp)
+                proyecto = self.repo_proyecto.obtener_por_id(id_proy)
+                if not empleado or not proyecto:
+                    raise ValueError("El empleado o el proyecto indicado no existe.")
+
+                reg = RegistroTiempo(0, empleado, proyecto, horas, fecha, descripcion)
+                self.repo_registro.crear(reg)
+                if reg.id_registro:
+                    print(f"\n[ÉXITO] Registro de tiempo almacenado correctamente (ID: {reg.id_registro}).")
+                else:
+                    print("\n[ERROR] No se pudo registrar las horas.")
+            except ValueError as e:
+                print(f"\n[ERROR DE ENTRADA O VALIDACIÓN]: {e}")
+            pausar()
 
     # ==========================================
     # 5. EXPORTAR INFORMES
