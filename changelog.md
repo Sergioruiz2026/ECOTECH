@@ -4,6 +4,155 @@ Registro de interacciones y cambios en el proyecto ECOTECH.
 
 ---
 
+## 2026-09-15
+
+### Prompt
+
+Corregir la confirmación de eliminación de departamentos cuando se ingresa una letra distinta de `s` o `n`.
+
+### Respuesta/Acciones
+
+- Se verificó el flujo exacto de eliminación de un departamento.
+- Una letra inválida ahora mantiene la solicitud activa hasta recibir `s` o `n`.
+- Se agregó una prueba integrada con el caso `x` seguido de `n`.
+
+### Archivos Modificados
+
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Prueba enfocada y suite completa ejecutadas correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Verificar nuevamente que una letra distinta de `s` o `n` no cierre el sistema durante una confirmación.
+
+### Respuesta/Acciones
+
+- Se reforzó el helper de confirmaciones para normalizar la entrada y repetir la pregunta.
+- Se eliminó el flujo redundante alrededor de la confirmación de gerente.
+- Se agregó una prueba integrada de creación de departamento con respuesta inválida.
+
+### Archivos Modificados
+
+- `main.py`
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Pruebas enfocadas y suite completa ejecutadas correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Corregir las confirmaciones `s/n` para que una letra inválida no cierre ni cancele el flujo.
+
+### Respuesta/Acciones
+
+- Se centralizó la validación de confirmaciones en `solicitar_confirmacion`.
+- Las respuestas distintas de `s` o `n` muestran un mensaje y vuelven a preguntar.
+- Se aplicó la validación al asignar gerentes y confirmar eliminaciones.
+- Se agregó una prueba para una respuesta inválida seguida de una respuesta válida.
+
+### Archivos Modificados
+
+- `main.py`
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Prueba enfocada y suite completa ejecutadas correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Agregar opciones de modificar y eliminar para las diferentes clases del script.
+
+### Respuesta/Acciones
+
+- Se agregaron las opciones `Modificar datos` y `Eliminar datos` al menú principal.
+- Se habilitaron operaciones para empleados/gerentes, departamentos, proyectos y registros de tiempo.
+- Las eliminaciones solicitan confirmación y limpian relaciones y registros dependientes.
+- Las modificaciones conservan los valores actuales cuando se deja un campo vacío.
+- Se agregaron pruebas para modificar proyectos y eliminar departamentos.
+
+### Archivos Modificados
+
+- `main.py`
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Suite completa de pruebas ejecutada correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Corregir el cierre del sistema al ingresar un correo inválido y mostrar los departamentos existentes.
+
+### Respuesta/Acciones
+
+- El registro de empleados vuelve a solicitar el correo cuando el formato es inválido.
+- Se muestra un mensaje de corrección sin interrumpir el programa.
+- La persistencia usa una ruta absoluta basada en el proyecto para cargar los departamentos aunque el programa se ejecute desde otro directorio.
+- Se agregó una prueba para el reintento de correo.
+
+### Archivos Modificados
+
+- `main.py`
+- `modelos/persistencia.py`
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Prueba enfocada del menú y suite completa ejecutadas correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Verificar la seguridad del menú de creación de departamentos y reutilizar los departamentos ya creados.
+
+### Respuesta/Acciones
+
+- El menú muestra los departamentos existentes como opciones.
+- Se evita crear departamentos con nombres vacíos, demasiado largos o duplicados sin distinguir mayúsculas/minúsculas.
+- Se valida que el número de gerente seleccionado sea válido.
+- Se agregaron pruebas del flujo interactivo.
+
+### Archivos Modificados
+
+- `main.py`
+- `pruebas/test_main.py`
+- `changelog.md`
+
+### Validaciones
+
+- Pruebas unitarias de modelos, persistencia y menú ejecutadas correctamente.
+
+---
+
 ## 2026-09-14
 
 ### Prompt

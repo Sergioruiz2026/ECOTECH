@@ -5,7 +5,7 @@ import os
 from typing import List, Dict, Tuple
 from modelos import Empleado, Gerente, Departamento, Proyecto, RegistroTiempo
 
-ARCHIVO_DATOS = "datos_ecotech.json"
+ARCHIVO_DATOS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "datos_ecotech.json")
 
 def guardar_datos(empleados: List, departamentos: List, proyectos: List, registros_tiempo: List):
     """Serializa las listas de objetos y las guarda en un archivo JSON."""

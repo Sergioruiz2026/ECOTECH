@@ -32,6 +32,22 @@
             "email": "ea8c352e454a7247@gmail.cl",
             "tarifa_hora": 25000.0,
             "cargo": "Desarrollador"
+        },
+        {
+            "tipo": "empleado",
+            "id_usuario": 5,
+            "nombre": "pedro pascal",
+            "email": "f07b18db5cc0d1dc@sjsj.sss",
+            "tarifa_hora": 25000.0,
+            "cargo": "secretario"
+        },
+        {
+            "tipo": "empleado",
+            "id_usuario": 6,
+            "nombre": "serguo pures",
+            "email": "dcec1342222da051@incs.cl",
+            "tarifa_hora": 10000.0,
+            "cargo": "obrero"
         }
     ],
     "departamentos": [
@@ -64,8 +80,42 @@
             "nombre": "Administracion",
             "id_gerente": null,
             "ids_empleados": []
+        },
+        {
+            "id_departamento": 7,
+            "nombre": "ddd",
+            "id_gerente": null,
+            "ids_empleados": []
+        },
+        {
+            "id_departamento": 8,
+            "nombre": "ppp",
+            "id_gerente": 1,
+            "ids_empleados": []
         }
     ],
-    "proyectos": [],
-    "registros_tiempo": []
+    "proyectos": [
+        {
+            "id_proyecto": 1,
+            "nombre": "Ecotech",
+            "presupuesto": 12000000.0,
+            "estado": "Planificación"
+        },
+        {
+            "id_proyecto": 2,
+            "nombre": "claud",
+            "presupuesto": 200000000.0,
+            "estado": "Planificación"
+        }
+    ],
+    "registros_tiempo": [
+        {
+            "id_registro": 1,
+            "id_empleado": 2,
+            "id_proyecto": 1,
+            "horas_trabajadas": 34.0,
+            "fecha": "2026-09-14",
+            "descripcion": "Realiza trabajo en inicio"
+        }
+    ]
 }
