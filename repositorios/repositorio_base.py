@@ -9,7 +9,11 @@ class RepositorioBase(ABC):
     """Clase base abstracta que define las operaciones CRUD genéricas."""
 
     def __init__(self, db: Database):
-        self.db = db
+        self.db = db if isinstance(db, Database) else Database(db)
+
+    def obtener_conexion(self):
+        """Devuelve una conexión usando la configuración común de la aplicación."""
+        return self.db.obtener_conexion()
 
     @abstractmethod
     def crear(self, entidad: Any) -> Any:

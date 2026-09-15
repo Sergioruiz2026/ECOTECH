@@ -1,12 +1,25 @@
 #Maneja los departamentos y su relación de empleados asociados
 
 import sqlite3
-from entidades.departamento import Departamento
+from typing import List
+from modelos.departamento import Departamento
 from repositorios.repositorio_base import RepositorioBase
+from database.database import Database
 
 class DepartamentoRepository(RepositorioBase):
-    def __init__(self, db_path: str = "ecotech.db"):
-        super().__init__(db_path)
+    def __init__(self, db: Database = None):
+        super().__init__(db or Database())
+
+    def crear(self, departamento: Departamento) -> Departamento:
+        self.guardar(departamento)
+        return departamento
+
+    def obtener_todos(self) -> List[Departamento]:
+        with self.obtener_conexion() as conexion:
+            filas = conexion.execute(
+                "SELECT id_departamento, nombre, id_gerente FROM departamentos ORDER BY id_departamento"
+            ).fetchall()
+        return [Departamento(row[0], row[1]) for row in filas]
 
     def guardar(self, departamento: Departamento) -> bool:
         conexion = self.obtener_conexion()
@@ -14,9 +27,9 @@ class DepartamentoRepository(RepositorioBase):
         try:
             cursor.execute(
                 "INSERT INTO departamentos (nombre, id_gerente) VALUES (?, ?)",
-                (departamento.nombre, departamento.id_gerente)
+                (departamento.nombre, None)
             )
-            departamento.id_departamento = cursor.lastrowid
+            departamento._id_departamento = cursor.lastrowid
             conexion.commit()
             return True
         except sqlite3.Error as e:
@@ -37,7 +50,7 @@ class DepartamentoRepository(RepositorioBase):
         try:
             cursor.execute(
                 "UPDATE departamentos SET nombre = ?, id_gerente = ? WHERE id_departamento = ?",
-                (departamento.nombre, departamento.id_gerente, departamento.id_departamento)
+                (departamento.nombre, None, departamento.id_departamento)
             )
             conexion.commit()
             return True
@@ -74,7 +87,5 @@ class DepartamentoRepository(RepositorioBase):
         conexion.close()
 
         if row:
-            dept = Departamento(nombre=row[1], id_gerente=row[2])
-            dept.id_departamento = row[0]
-            return dept
+            return Departamento(row[0], row[1])
         return None

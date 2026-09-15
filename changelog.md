@@ -8,6 +8,115 @@ Registro de interacciones y cambios en el proyecto ECOTECH.
 
 ### Prompt
 
+Corregir `main.py` y compatibilizar la interfaz de consola con los modelos y repositorios actuales.
+
+### Respuesta/Acciones
+
+- Se reemplazaron imports obsoletos de `entidades` por `modelos`.
+- Se corrigió el repositorio de registros de tiempo.
+- Se actualizó la inicialización para compartir `Database` entre repositorios.
+- Se adaptaron autenticación, registro de usuarios, empleados, departamentos, proyectos y registros de tiempo a las APIs actuales.
+
+### Archivos Modificados
+
+- `main.py`
+- `changelog.md`
+
+### Validaciones
+
+- `MenuApp` instanciado correctamente.
+- Menú de acceso iniciado y cerrado mediante la opción `0`.
+- Actualización de nombre de proyecto validada.
+- Sintaxis y diagnósticos de `main.py` correctos.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Corregir el error al actualizar el nombre de un proyecto desde el menú de consola.
+
+### Respuesta/Acciones
+
+- Se añadió el setter `Proyecto.nombre`.
+- El setter valida que el nombre no esté vacío y elimina espacios laterales.
+
+### Archivos Modificados
+
+- `modelos/proyecto.py`
+- `changelog.md`
+
+### Validaciones
+
+- Actualización directa del nombre ejecutada correctamente.
+- Sintaxis validada con `py_compile`.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Corregir la interfaz de consola y el menú de gestión de ECOTECH.
+
+### Respuesta/Acciones
+
+- Se reemplazaron imports obsoletos de `entidades` por los modelos actuales.
+- Se corrigió el nombre del repositorio de registros de tiempo.
+- Se adaptaron las operaciones del menú a los constructores y métodos actuales de SQLite.
+- Se corrigió la asignación de IDs en los repositorios al guardar entidades.
+- Se agregó validación repetitiva para confirmaciones de eliminación.
+
+### Archivos Modificados
+
+- `main.py`
+- `repositorios/empleado_repository.py`
+- `repositorios/proyecto_repository.py`
+- `repositorios/departamento_repository.py`
+- `changelog.md`
+
+### Validaciones
+
+- Arranque de `main.py` y salida mediante la opción `0`.
+- Flujo directo de creación en el submenú de proyectos.
+- Confirmación inválida seguida de `n` correctamente gestionada.
+- Comprobación de sintaxis con `py_compile`.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
+Crear `main_informes.py` para consultar SQLite mediante repositorios y generar reportes PDF y Excel en `salida_reportes/`.
+
+### Respuesta/Acciones
+
+- Se alinearon los repositorios de empleados, proyectos y departamentos con `Database` y las clases de `modelos`.
+- Se añadieron las lecturas masivas necesarias para el flujo de reportes.
+- Se creó `main_informes.py` para generar `reporte_tiempo.pdf` y `reporte_tiempo.xlsx`.
+
+### Archivos Modificados
+
+- `main_informes.py`
+- `repositorios/repositorio_base.py`
+- `repositorios/empleado_repository.py`
+- `repositorios/proyecto_repository.py`
+- `repositorios/departamento_repository.py`
+- `changelog.md`
+
+### Validaciones
+
+- Ejecución de `python main_informes.py` completada correctamente.
+- Suite de pruebas del proyecto ejecutada correctamente.
+
+---
+
+## 2026-09-15
+
+### Prompt
+
 Corregir la confirmación de eliminación de departamentos cuando se ingresa una letra distinta de `s` o `n`.
 
 ### Respuesta/Acciones

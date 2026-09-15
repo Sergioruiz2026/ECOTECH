@@ -1,10 +1,26 @@
 import sqlite3
-from entidades.empleado import Empleado
+from typing import List, Optional
+from modelos.empleado import Empleado
 from repositorios.repositorio_base import RepositorioBase
+from database.database import Database
 
 class EmpleadoRepository(RepositorioBase):
-    def __init__(self, db_path: str = "ecotech.db"):
-        super().__init__(db_path)
+    def __init__(self, db: Database = None):
+        super().__init__(db or Database())
+
+    def crear(self, empleado: Empleado) -> Empleado:
+        self.guardar(empleado)
+        return empleado
+
+    def obtener_todos(self) -> List[Empleado]:
+        with self.obtener_conexion() as conexion:
+            filas = conexion.execute('''
+                SELECT u.id_usuario, u.nombre, u.email, e.cargo, e.tarifa_hora
+                FROM usuarios u
+                JOIN empleados e ON u.id_usuario = e.id_usuario
+                ORDER BY u.id_usuario
+            ''').fetchall()
+        return [Empleado(row[0], row[1], row[2], row[3], row[4]) for row in filas]
 
     def guardar(self, empleado: Empleado) -> bool:
         conexion = self.obtener_conexion()
@@ -16,7 +32,7 @@ class EmpleadoRepository(RepositorioBase):
                 (empleado.nombre, empleado.obtener_email_cifrado())
             )
             id_usuario = cursor.lastrowid
-            empleado.id_usuario = id_usuario
+            empleado._id_usuario = id_usuario
 
             # 2. Insertar en tabla empleados
             cursor.execute(
@@ -88,7 +104,5 @@ class EmpleadoRepository(RepositorioBase):
         conexion.close()
 
         if row:
-            emp = Empleado(nombre=row[1], email=row[2], cargo=row[3], tarifa_hora=row[4])
-            emp.id_usuario = row[0]
-            return emp
+            return Empleado(row[0], row[1], row[2], row[3], row[4])
         return None

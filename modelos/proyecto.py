@@ -20,6 +20,12 @@ class Proyecto:
     def nombre(self) -> str:
         return self._nombre
 
+    @nombre.setter
+    def nombre(self, nuevo_nombre: str):
+        if not nuevo_nombre or not nuevo_nombre.strip():
+            raise ValueError("El nombre del proyecto no puede estar vacío.")
+        self._nombre = nuevo_nombre.strip()
+
     @property
     def presupuesto(self) -> float:
         return self._presupuesto

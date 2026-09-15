@@ -1,12 +1,25 @@
 #Maneja los proyectos de ECOTECH
 
 import sqlite3
-from entidades.proyecto import Proyecto
+from typing import List
+from modelos.proyecto import Proyecto
 from repositorios.repositorio_base import RepositorioBase
+from database.database import Database
 
 class ProyectoRepository(RepositorioBase):
-    def __init__(self, db_path: str = "ecotech.db"):
-        super().__init__(db_path)
+    def __init__(self, db: Database = None):
+        super().__init__(db or Database())
+
+    def crear(self, proyecto: Proyecto) -> Proyecto:
+        self.guardar(proyecto)
+        return proyecto
+
+    def obtener_todos(self) -> List[Proyecto]:
+        with self.obtener_conexion() as conexion:
+            filas = conexion.execute(
+                "SELECT id_proyecto, nombre, presupuesto, estado FROM proyectos ORDER BY id_proyecto"
+            ).fetchall()
+        return [Proyecto(row[0], row[1], row[2], row[3]) for row in filas]
 
     def guardar(self, proyecto: Proyecto) -> bool:
         conexion = self.obtener_conexion()
@@ -16,7 +29,7 @@ class ProyectoRepository(RepositorioBase):
                 "INSERT INTO proyectos (nombre, presupuesto, estado) VALUES (?, ?, ?)",
                 (proyecto.nombre, proyecto.presupuesto, proyecto.estado)
             )
-            proyecto.id_proyecto = cursor.lastrowid
+            proyecto._id_proyecto = cursor.lastrowid
             conexion.commit()
             return True
         except sqlite3.Error as e:
@@ -74,7 +87,5 @@ class ProyectoRepository(RepositorioBase):
         conexion.close()
 
         if row:
-            proy = Proyecto(nombre=row[1], presupuesto=row[2], estado=row[3])
-            proy.id_proyecto = row[0]
-            return proy
+            return Proyecto(row[0], row[1], row[2], row[3])
         return None

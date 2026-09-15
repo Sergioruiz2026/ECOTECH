@@ -2,388 +2,459 @@
 #departamentos, proyectos y registros de tiempo interactuando directamente 
 #con todas las clases creadas.
 
-import sys
-from modelos import Usuario, Empleado, Gerente, Departamento, Proyecto, RegistroTiempo, guardar_datos, cargar_datos
+import os
+from datetime import datetime
+from database.database import Database
 
-# Cargar datos guardados previamente desde el archivo JSON
-empleados, departamentos, proyectos, registros_tiempo = cargar_datos()
+# Importación de Modelos
+from modelos.usuario import Usuario
+from modelos.empleado import Empleado
+from modelos.departamento import Departamento
+from modelos.proyecto import Proyecto
+from modelos.registro_tiempo import RegistroTiempo
 
-# Sincronizar secuencias de ID según el valor máximo existente
-id_usuario_seq = max([e.id_usuario for e in empleados], default=0) + 1
-id_depto_seq = max([d.id_departamento for d in departamentos], default=0) + 1
-id_proyecto_seq = max([p.id_proyecto for p in proyectos], default=0) + 1
-id_registro_seq = max([r.id_registro for r in registros_tiempo], default=0) + 1
+# Importación de Repositorios
+from repositorios.empleado_repository import EmpleadoRepository
+from repositorios.departamento_repository import DepartamentoRepository
+from repositorios.proyecto_repository import ProyectoRepository
+from repositorios.registro_repository import RegistroTiempoRepository
+from repositorios.usuario_repository import UsuarioRepository
 
+# Importación del Módulo de Informes
+from informes.informe_pdf import InformePDF
+from informes.informe_excel import InformeExcel
 
-def auto_guardar():
-    """Guarda automáticamente el estado actual en JSON."""
-    guardar_datos(empleados, departamentos, proyectos, registros_tiempo)
+def limpiar_pantalla():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
+def pausar():
+    input("\nPresione ENTER para continuar...")
 
-def solicitar_numero(mensaje: str, tipo=float, minimo=None):
-    while True:
-        try:
-            valor = tipo(input(mensaje))
-            if minimo is not None and valor <= minimo:
-                raise ValueError
-            return valor
-        except ValueError:
-            if minimo is None:
-                print("Entrada no válida. Ingrese un número.")
-            else:
-                print(f"Entrada no válida. Ingrese un número mayor que {minimo}.")
+class MenuApp:
+    def __init__(self):
+        db = Database()
+        db.inicializar_tablas()
+        self.repo_usuario = UsuarioRepository(db)
+        self.repo_empleado = EmpleadoRepository(db)
+        self.repo_departamento = DepartamentoRepository(db)
+        self.repo_proyecto = ProyectoRepository(db)
+        self.repo_registro = RegistroTiempoRepository(db)
+        self.usuario_actual = None  # Almacenará la sesión del usuario activo
 
-
-def solicitar_confirmacion(mensaje):
-    while True:
-        respuesta = input(f"{mensaje} (s/n): ").strip().casefold()
-        if respuesta in ("s", "n"):
-            return respuesta
-        print("Respuesta no válida. Escriba 's' para sí o 'n' para no.")
-
-
-def registrar_empleado_o_gerente():
-    global id_usuario_seq
-    print("\n--- REGISTRAR EMPLEADO / GERENTE ---")
-    print("1. Empleado General\n2. Gerente")
-    tipo = input("Selecciona tipo (1/2): ").strip()
-    if tipo not in ("1", "2"):
-        print("Opción inválida.")
-        return
-
-    nombre = input("Nombre completo: ").strip()
-    while True:
-        email = input("Correo electrónico: ").strip()
-        if Usuario.PATRON_EMAIL.fullmatch(email.lower()):
-            break
-        print("Correo inválido. Ingrese un correo con formato correcto, por ejemplo usuario@dominio.com.")
-    tarifa = solicitar_numero("Tarifa por hora ($): ", float, minimo=0)
-
-    if tipo == "1":
-        cargo = input("Cargo / Puesto: ").strip()
-        nuevo = Empleado(id_usuario_seq, nombre, email, cargo, tarifa)
-        empleados.append(nuevo)
-    else:
-        bono = solicitar_numero("Bono de liderazgo ($): ", float, minimo=0)
-        nuevo = Gerente(id_usuario_seq, nombre, email, tarifa_hora=tarifa, bono_liderazgo=bono)
-        empleados.append(nuevo)
-
-    id_usuario_seq += 1
-    auto_guardar()
-    print(f"[{nombre}] registrado con éxito.")
-
-
-def solicitar_nombre_departamento():
-    """Permite reutilizar un departamento existente o introducir uno nuevo."""
-    if departamentos:
-        print("\nDepartamentos existentes:")
-        for idx, departamento in enumerate(departamentos, 1):
-            print(f"{idx}. {departamento.nombre}")
-        print("0. Crear un departamento nuevo")
-
+    # ==========================================
+    # PANTALLA INICIAL: AUTENTICACIÓN
+    # ==========================================
+    def iniciar_sistema(self):
         while True:
-            opcion = input("Selecciona un departamento o 0 para crear uno: ").strip()
-            if opcion == "0":
+            limpiar_pantalla()
+            print("==================================================")
+            print("         ECOTECH SOLUTIONS - ACCESO               ")
+            print("==================================================")
+            print("1. Iniciar Sesión")
+            print("2. Registrar Nuevo Usuario")
+            print("0. Salir")
+            print("--------------------------------------------------")
+            opcion = input("Seleccione una opción: ").strip()
+
+            if opcion == "1":
+                if self.iniciar_sesion():
+                    self.ejecutar_menu_principal()
+            elif opcion == "2":
+                self.registrar_usuario()
+            elif opcion == "0":
+                print("\n¡Gracias por utilizar el sistema de ECOTECH Solutions!")
                 break
-            try:
-                indice = int(opcion) - 1
-            except ValueError:
-                indice = -1
-            if 0 <= indice < len(departamentos):
-                print(f"El departamento '{departamentos[indice].nombre}' ya existe.")
-                return None
-            print("Opción inválida. Seleccione un departamento de la lista o 0.")
+            else:
+                print("Opción inválida. Intente nuevamente.")
+                pausar()
 
-    while True:
-        nombre = input("Nombre del departamento: ").strip()
-        if not nombre:
-            print("El nombre del departamento no puede estar vacío.")
-            continue
-        if len(nombre) > 100:
-            print("El nombre del departamento no puede superar 100 caracteres.")
-            continue
-        if any(nombre.casefold() == departamento.nombre.casefold() for departamento in departamentos):
-            print("Ese departamento ya existe. Selecciónelo de la lista.")
-            continue
-        return nombre
-
-
-def crear_departamento():
-    global id_depto_seq
-    print("\n--- CREAR DEPARTAMENTO ---")
-    nombre = solicitar_nombre_departamento()
-    if nombre is None:
-        return
-
-    gerentes_disponibles = [e for e in empleados if isinstance(e, Gerente)]
-    gerente_asignado = None
-
-    if gerentes_disponibles:
-        for idx, g in enumerate(gerentes_disponibles, 1):
-            print(f"{idx}. {g.nombre}")
-        asignar_gerente = solicitar_confirmacion("¿Asignar gerente?")
-
-        if asignar_gerente == "s":
-            while gerente_asignado is None:
-                idx_g = solicitar_numero("Número de gerente: ", int) - 1
-                if 0 <= idx_g < len(gerentes_disponibles):
-                    gerente_asignado = gerentes_disponibles[idx_g]
-                else:
-                    print("Número de gerente inválido.")
-
-    nuevo_depto = Departamento(id_depto_seq, nombre, gerente_asignado)
-    departamentos.append(nuevo_depto)
-    id_depto_seq += 1
-    auto_guardar()
-    print(f"Departamento '{nombre}' creado.")
-
-
-def crear_proyecto():
-    global id_proyecto_seq
-    print("\n--- CREAR PROYECTO ---")
-    nombre = input("Nombre del proyecto: ").strip()
-    presupuesto = solicitar_numero("Presupuesto ($): ", float)
-
-    proyectos.append(Proyecto(id_proyecto_seq, nombre, presupuesto))
-    id_proyecto_seq += 1
-    auto_guardar()
-    print(f"Proyecto '{nombre}' creado.")
-
-
-def registrar_horas_trabajo():
-    global id_registro_seq
-    print("\n--- REGISTRAR TIEMPO DE TRABAJO ---")
-    if not empleados or not proyectos:
-        print("Requiere al menos un empleado y un proyecto registrados.")
-        return
-
-    for idx, e in enumerate(empleados, 1):
-        print(f"{idx}. {e.nombre} ({e.cargo})")
-    idx_emp = solicitar_numero("Número de empleado: ", int) - 1
-
-    for idx, p in enumerate(proyectos, 1):
-        print(f"{idx}. {p.nombre}")
-    idx_proy = solicitar_numero("Número de proyecto: ", int) - 1
-
-    if 0 <= idx_emp < len(empleados) and 0 <= idx_proy < len(proyectos):
-        emp, proy = empleados[idx_emp], proyectos[idx_proy]
-        horas = solicitar_numero("Horas trabajadas: ", float)
-        desc = input("Descripción (opcional): ").strip()
-
-        proy.asignar_miembro(emp)
-        reg = RegistroTiempo(id_registro_seq, emp, proy, horas, descripcion=desc)
-        registros_tiempo.append(reg)
-        id_registro_seq += 1
-        auto_guardar()
-        print(f"Registro creado. Costo laboral: ${reg.calcular_costo_laboral():.2f}")
-
-
-def seleccionar_elemento(elementos, mensaje):
-    """Devuelve el elemento seleccionado o None si no hay elementos."""
-    if not elementos:
-        print("No hay elementos registrados.")
-        return None
-    for indice, elemento in enumerate(elementos, 1):
-        print(f"{indice}. {elemento}")
-    while True:
-        opcion = input(mensaje).strip()
+    def iniciar_sesion(self) -> bool:
+        limpiar_pantalla()
+        print("--- INICIAR SESIÓN ---")
+        email = input("Ingrese su correo electrónico registrado: ").strip()
+        
         try:
-            indice = int(opcion) - 1
-        except ValueError:
-            indice = -1
-        if 0 <= indice < len(elementos):
-            return elementos[indice]
-        print("Opción inválida.")
+            # Crear instancia temporal para aplicar la lógica de validación y cifrado
+            user_temp = Usuario(0, "Temp", email)
+            email_cifrado = user_temp.obtener_email_cifrado()
 
+            # Consultar en la BD por el hash del correo
+            conexion = self.repo_usuario.obtener_conexion()
+            cursor = conexion.cursor()
+            cursor.execute("SELECT id_usuario, nombre, email FROM usuarios WHERE email = ?", (email_cifrado,))
+            row = cursor.fetchone()
+            conexion.close()
 
-def modificar_empleado():
-    empleado = seleccionar_elemento(empleados, "Número de empleado/gerente: ")
-    if empleado is None:
-        return
+            if row:
+                self.usuario_actual = Usuario(row[0], row[1], email)
+                print(f"\n[ÉXITO] ¡Bienvenido(a), {self.usuario_actual.nombre}!")
+                pausar()
+                return True
+            else:
+                print("\n[ERROR] Correo electrónico no registrado o credenciales inválidas.")
+                pausar()
+                return False
+        except ValueError as e:
+            print(f"\n[ERROR DE VALIDACIÓN]: {e}")
+            pausar()
+            return False
 
-    nombre = input(f"Nombre [{empleado.nombre}]: ").strip()
-    if nombre:
-        empleado.nombre = nombre
-    email = input(f"Correo [{empleado.email}]: ").strip()
-    if email:
-        while not Usuario.PATRON_EMAIL.fullmatch(email.lower()):
-            print("Correo inválido. Intente nuevamente.")
-            email = input("Correo: ").strip()
-        empleado.email = email
-    tarifa = input(f"Tarifa por hora [{empleado.tarifa_hora}]: ").strip()
-    if tarifa:
+    def registrar_usuario(self):
+        limpiar_pantalla()
+        print("--- REGISTRO DE NUEVO USUARIO ---")
+        nombre = input("Nombre completo: ").strip()
+        email = input("Correo electrónico: ").strip()
+
         try:
-            empleado.tarifa_hora = float(tarifa)
-        except ValueError:
-            print("Tarifa inválida; se conserva el valor anterior.")
-    if isinstance(empleado, Gerente):
-        bono = input(f"Bono de liderazgo [{empleado.bono_liderazgo}]: ").strip()
-        if bono:
-            try:
-                empleado.bono_liderazgo = float(bono)
-            except ValueError:
-                print("Bono inválido; se conserva el valor anterior.")
-    else:
-        cargo = input(f"Cargo [{empleado.cargo}]: ").strip()
-        if cargo:
-            empleado.cargo = cargo
-    auto_guardar()
-    print("Empleado actualizado correctamente.")
+            nuevo_usuario = Usuario(0, nombre, email)
+            if self.repo_usuario.crear(nuevo_usuario):
+                print(f"\n[ÉXITO] Usuario registrado correctamente. Ya puede iniciar sesión.")
+            else:
+                print("\n[ERROR] No se pudo completar el registro en la base de datos.")
+        except ValueError as e:
+            print(f"\n[ERROR DE VALIDACIÓN]: {e}")
+        pausar()
 
+    # ==========================================
+    # MENÚ PRINCIPAL DEL SISTEMA
+    # ==========================================
+    def ejecutar_menu_principal(self):
+        while True:
+            limpiar_pantalla()
+            print("==================================================")
+            print(f" ECOTECH SOLUTIONS | Usuario Activo: {self.usuario_actual.nombre}")
+            print("==================================================")
+            print("1. Gestión de Empleados")
+            print("2. Gestión de Departamentos")
+            print("3. Gestión de Proyectos")
+            print("4. Registrar Horas de Trabajo (RegistroTiempo)")
+            print("5. Exportar Informes (PDF / Excel)")
+            print("0. Cerrar Sesión")
+            print("--------------------------------------------------")
+            opcion = input("Seleccione una opción: ").strip()
 
-def modificar_departamento():
-    departamento = seleccionar_elemento(departamentos, "Número de departamento: ")
-    if departamento is None:
-        return
-    nombre = input(f"Nombre [{departamento.nombre}]: ").strip()
-    if nombre and not any(
-        nombre.casefold() == otro.nombre.casefold() and otro is not departamento
-        for otro in departamentos
-    ):
-        departamento.nombre = nombre
-    elif nombre:
-        print("Ese nombre ya pertenece a otro departamento.")
-    auto_guardar()
-    print("Departamento actualizado correctamente.")
+            if opcion == "1":
+                self.menu_empleados()
+            elif opcion == "2":
+                self.menu_departamentos()
+            elif opcion == "3":
+                self.menu_proyectos()
+            elif opcion == "4":
+                self.menu_registro_tiempo()
+            elif opcion == "5":
+                self.menu_informes()
+            elif opcion == "0":
+                print(f"\nCerrando sesión de {self.usuario_actual.nombre}...")
+                self.usuario_actual = None
+                pausar()
+                break
+            else:
+                print("Opción inválida. Intente nuevamente.")
+                pausar()
 
+    # ==========================================
+    # 1. MENÚ EMPLEADOS
+    # ==========================================
+    def menu_empleados(self):
+        while True:
+            limpiar_pantalla()
+            print("--- GESTIÓN DE EMPLEADOS ---")
+            print("1. Registrar Empleado / Gerente")
+            print("2. Buscar Empleado por ID")
+            print("3. Actualizar Empleado")
+            print("4. Eliminar Empleado")
+            print("0. Volver al Menú Principal")
+            opcion = input("\nSeleccione una opción: ").strip()
 
-def modificar_proyecto():
-    proyecto = seleccionar_elemento(proyectos, "Número de proyecto: ")
-    if proyecto is None:
-        return
-    nombre = input(f"Nombre [{proyecto.nombre}]: ").strip()
-    if nombre:
-        proyecto._nombre = nombre
-    presupuesto = input(f"Presupuesto [{proyecto.presupuesto}]: ").strip()
-    if presupuesto:
+            if opcion == "1":
+                nombre = input("Nombre completo: ").strip()
+                email = input("Correo electrónico: ").strip()
+                cargo = input("Cargo: ").strip()
+                try:
+                    tarifa = float(input("Tarifa por hora ($): "))
+                    empleado = Empleado(0, nombre, email, cargo, tarifa)
+                    if self.repo_empleado.crear(empleado):
+                        print(f"\n[ÉXITO] Empleado registrado correctamente con ID: {empleado.id_usuario}")
+                    else:
+                        print("\n[ERROR] No se pudo guardar el empleado.")
+                except ValueError as e:
+                    print(f"\n[ERROR DE VALIDACIÓN]: {e}")
+                pausar()
+
+            elif opcion == "2":
+                try:
+                    id_emp = int(input("Ingrese el ID del empleado: "))
+                    emp = self.repo_empleado.obtener_por_id(id_emp)
+                    if emp:
+                        print("\nDatos encontrados:")
+                        print(f"ID: {emp.id_usuario} | Nombre: {emp.nombre} | Email Hash: {emp.obtener_email_cifrado()}")
+                        print(f"Cargo: {emp.cargo} | Tarifa/Hora: ${emp.tarifa_hora:,.2f}")
+                    else:
+                        print("\nEmpleado no encontrado.")
+                except ValueError:
+                    print("\nID debe ser un valor numérico.")
+                pausar()
+
+            elif opcion == "3":
+                try:
+                    id_emp = int(input("Ingrese el ID del empleado a actualizar: "))
+                    emp = self.repo_empleado.obtener_por_id(id_emp)
+                    if emp:
+                        print(f"\nActualizando a: {emp.nombre}")
+                        emp.nombre = input(f"Nuevo Nombre [{emp.nombre}]: ").strip() or emp.nombre
+                        nuevo_email = input(f"Nuevo Email [{emp.email}]: ").strip()
+                        if nuevo_email:
+                            emp.email = nuevo_email
+                        emp.cargo = input(f"Nuevo Cargo [{emp.cargo}]: ").strip() or emp.cargo
+                        
+                        tarifa_str = input(f"Nueva Tarifa/Hora [{emp.tarifa_hora}]: ").strip()
+                        if tarifa_str:
+                            emp.tarifa_hora = float(tarifa_str)
+
+                        if self.repo_empleado.actualizar(emp):
+                            print("\n[ÉXITO] Empleado actualizado correctamente.")
+                        else:
+                            print("\n[ERROR] No se pudo actualizar el empleado.")
+                    else:
+                        print("\nEmpleado no encontrado.")
+                except ValueError as e:
+                    print(f"\n[ERROR]: {e}")
+                pausar()
+
+            elif opcion == "4":
+                try:
+                    id_emp = int(input("Ingrese el ID del empleado a eliminar: "))
+                    confirm = input(f"¿Está seguro de eliminar al empleado ID {id_emp}? (s/n): ").lower()
+                    if confirm == 's':
+                        if self.repo_empleado.eliminar(id_emp):
+                            print("\n[ÉXITO] Empleado eliminado.")
+                        else:
+                            print("\n[ERROR] No se pudo eliminar.")
+                except ValueError:
+                    print("\nID inválido.")
+                pausar()
+
+            elif opcion == "0":
+                break
+
+    # ==========================================
+    # 2. MENÚ DEPARTAMENTOS
+    # ==========================================
+    def menu_departamentos(self):
+        while True:
+            limpiar_pantalla()
+            print("--- GESTIÓN DE DEPARTAMENTOS ---")
+            print("1. Crear Departamento")
+            print("2. Buscar Departamento por ID")
+            print("3. Actualizar Departamento")
+            print("4. Eliminar Departamento")
+            print("0. Volver al Menú Principal")
+            opcion = input("\nSeleccione una opción: ").strip()
+
+            if opcion == "1":
+                nombre = input("Nombre del Departamento: ").strip()
+                try:
+                    id_gerente = int(input("ID del Gerente a cargo: "))
+                    dept = Departamento(0, nombre)
+                    if self.repo_departamento.crear(dept):
+                        print(f"\n[ÉXITO] Departamento creado con ID: {dept.id_departamento}")
+                    else:
+                        print("\n[ERROR] No se pudo crear el departamento.")
+                except ValueError:
+                    print("\n[ERROR] ID de gerente inválido.")
+                pausar()
+
+            elif opcion == "2":
+                try:
+                    id_d = int(input("ID del Departamento: "))
+                    d = self.repo_departamento.obtener_por_id(id_d)
+                    if d:
+                        print(f"\nID: {d.id_departamento} | Nombre: {d.nombre}")
+                    else:
+                        print("\nDepartamento no encontrado.")
+                except ValueError:
+                    print("\nID inválido.")
+                pausar()
+
+            elif opcion == "3":
+                try:
+                    id_d = int(input("ID del Departamento a actualizar: "))
+                    d = self.repo_departamento.obtener_por_id(id_d)
+                    if d:
+                        d.nombre = input(f"Nuevo Nombre [{d.nombre}]: ").strip() or d.nombre
+                        if self.repo_departamento.actualizar(d):
+                            print("\n[ÉXITO] Departamento actualizado.")
+                        else:
+                            print("\n[ERROR] No se pudo actualizar.")
+                    else:
+                        print("\nDepartamento no encontrado.")
+                except ValueError:
+                    print("\nEntrada inválida.")
+                pausar()
+
+            elif opcion == "4":
+                try:
+                    id_d = int(input("ID del Departamento a eliminar: "))
+                    if self.repo_departamento.eliminar(id_d):
+                        print("\n[ÉXITO] Departamento eliminado.")
+                    else:
+                        print("\n[ERROR] No se pudo eliminar.")
+                except ValueError:
+                    print("\nID inválido.")
+                pausar()
+
+            elif opcion == "0":
+                break
+
+    # ==========================================
+    # 3. MENÚ PROYECTOS
+    # ==========================================
+    def menu_proyectos(self):
+        while True:
+            limpiar_pantalla()
+            print("--- GESTIÓN DE PROYECTOS ---")
+            print("1. Crear Proyecto")
+            print("2. Buscar Proyecto por ID")
+            print("3. Actualizar Proyecto")
+            print("4. Eliminar Proyecto")
+            print("0. Volver al Menú Principal")
+            opcion = input("\nSeleccione una opción: ").strip()
+
+            if opcion == "1":
+                nombre = input("Nombre del Proyecto: ").strip()
+                try:
+                    presupuesto = float(input("Presupuesto ($): "))
+                    estado = input("Estado (Planificado/En Proceso/Completado): ").strip() or "Planificado"
+                    proy = Proyecto(0, nombre, presupuesto, estado)
+                    if self.repo_proyecto.crear(proy):
+                        print(f"\n[ÉXITO] Proyecto creado con ID: {proy.id_proyecto}")
+                    else:
+                        print("\n[ERROR] No se pudo guardar el proyecto.")
+                except ValueError:
+                    print("\n[ERROR] Presupuesto inválido.")
+                pausar()
+
+            elif opcion == "2":
+                try:
+                    id_p = int(input("ID del Proyecto: "))
+                    p = self.repo_proyecto.obtener_por_id(id_p)
+                    if p:
+                        print(f"\nID: {p.id_proyecto} | Nombre: {p.nombre} | Presupuesto: ${p.presupuesto:,.2f} | Estado: {p.estado}")
+                    else:
+                        print("\nProyecto no encontrado.")
+                except ValueError:
+                    print("\nID inválido.")
+                pausar()
+
+            elif opcion == "3":
+                try:
+                    id_p = int(input("ID del Proyecto a actualizar: "))
+                    p = self.repo_proyecto.obtener_por_id(id_p)
+                    if p:
+                        p.nombre = input(f"Nuevo Nombre [{p.nombre}]: ").strip() or p.nombre
+                        pres_str = input(f"Nuevo Presupuesto [{p.presupuesto}]: ").strip()
+                        if pres_str:
+                            p.presupuesto = float(pres_str)
+                        p.estado = input(f"Nuevo Estado [{p.estado}]: ").strip() or p.estado
+
+                        if self.repo_proyecto.actualizar(p):
+                            print("\n[ÉXITO] Proyecto actualizado.")
+                        else:
+                            print("\n[ERROR] No se pudo actualizar.")
+                    else:
+                        print("\nProyecto no encontrado.")
+                except ValueError:
+                    print("\nEntrada inválida.")
+                pausar()
+
+            elif opcion == "4":
+                try:
+                    id_p = int(input("ID del Proyecto a eliminar: "))
+                    if self.repo_proyecto.eliminar(id_p):
+                        print("\n[ÉXITO] Proyecto eliminado.")
+                    else:
+                        print("\n[ERROR] No se pudo eliminar.")
+                except ValueError:
+                    print("\nID inválido.")
+                pausar()
+
+            elif opcion == "0":
+                break
+
+    # ==========================================
+    # 4. REGISTRO DE TIEMPO
+    # ==========================================
+    def menu_registro_tiempo(self):
+        limpiar_pantalla()
+        print("--- REGISTRAR HORAS TRABAJADAS ---")
         try:
-            proyecto.presupuesto = float(presupuesto)
-        except ValueError:
-            print("Presupuesto inválido; se conserva el valor anterior.")
-    estado = input(f"Estado [{proyecto.estado}]: ").strip()
-    if estado:
-        proyecto.estado = estado
-    auto_guardar()
-    print("Proyecto actualizado correctamente.")
+            id_emp = int(input("ID del Empleado: "))
+            id_proy = int(input("ID del Proyecto: "))
+            horas = float(input("Horas trabajadas: "))
+            descripcion = input("Descripción de la tarea: ").strip()
+            fecha = datetime.now().strftime('%Y-%m-%d')
 
+            empleado = self.repo_empleado.obtener_por_id(id_emp)
+            proyecto = self.repo_proyecto.obtener_por_id(id_proy)
+            if not empleado or not proyecto:
+                raise ValueError("El empleado o el proyecto indicado no existe.")
 
-def modificar_registro():
-    registro = seleccionar_elemento(registros_tiempo, "Número de registro: ")
-    if registro is None:
-        return
-    horas = input(f"Horas trabajadas [{registro.horas_trabajadas}]: ").strip()
-    if horas:
-        try:
-            registro.horas_trabajadas = float(horas)
-        except ValueError:
-            print("Horas inválidas; se conserva el valor anterior.")
-    descripcion = input(f"Descripción [{registro._descripcion}]: ").strip()
-    if descripcion:
-        registro._descripcion = descripcion
-    auto_guardar()
-    print("Registro actualizado correctamente.")
+            reg = RegistroTiempo(0, empleado, proyecto, horas, fecha, descripcion)
+            self.repo_registro.crear(reg)
+            if reg.id_registro:
+                print(f"\n[ÉXITO] Registro de tiempo almacenado correctamente (ID: {reg.id_registro}).")
+            else:
+                print("\n[ERROR] No se pudo registrar las horas.")
+        except ValueError as e:
+            print(f"\n[ERROR DE ENTRADA O VALIDACIÓN]: {e}")
+        pausar()
 
+    # ==========================================
+    # 5. EXPORTAR INFORMES
+    # ==========================================
+    def menu_informes(self):
+        limpiar_pantalla()
+        print("--- EXPORTAR INFORMES GENERALES ---")
+        print("1. Exportar en Formato PDF")
+        print("2. Exportar en Formato Excel (.xlsx)")
+        opcion = input("\nSeleccione el formato deseado: ").strip()
 
-def modificar_datos():
-    print("\n--- MODIFICAR DATOS ---")
-    print("1. Empleado / Gerente\n2. Departamento\n3. Proyecto\n4. Registro de tiempo")
-    opcion = input("Selecciona una opción: ").strip()
-    acciones = {
-        "1": modificar_empleado,
-        "2": modificar_departamento,
-        "3": modificar_proyecto,
-        "4": modificar_registro,
-    }
-    accion = acciones.get(opcion)
-    if accion:
-        accion()
-    else:
-        print("Opción inválida.")
+        conexion = self.repo_proyecto.obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT id_proyecto, nombre, presupuesto, estado FROM proyectos")
+        filas = cursor.fetchall()
+        conexion.close()
 
+        datos_reporte = [
+            {
+                "ID Proyecto": f[0],
+                "Nombre": f[1],
+                "Presupuesto ($)": f"{f[2]:,.2f}",
+                "Estado": f[3]
+            }
+            for f in filas
+        ] if filas else [
+            {"ID Proyecto": 1, "Nombre": "Sin proyectos registrados", "Presupuesto ($)": "0.00", "Estado": "N/A"}
+        ]
 
-def eliminar_datos():
-    print("\n--- ELIMINAR DATOS ---")
-    print("1. Empleado / Gerente\n2. Departamento\n3. Proyecto\n4. Registro de tiempo")
-    opcion = input("Selecciona una opción: ").strip()
-    colecciones = {"1": empleados, "2": departamentos, "3": proyectos, "4": registros_tiempo}
-    coleccion = colecciones.get(opcion)
-    if coleccion is None:
-        print("Opción inválida.")
-        return
-    elemento = seleccionar_elemento(coleccion, "Número del elemento: ")
-    if elemento is None:
-        return
-    confirmacion = solicitar_confirmacion(f"¿Confirmar eliminación de '{elemento}'?")
-    if confirmacion == "n":
-        print("Eliminación cancelada.")
-        return
+        carpeta_salida = "salida_reportes"
+        if not os.path.exists(carpeta_salida):
+            os.makedirs(carpeta_salida)
 
-    coleccion.remove(elemento)
-    if opcion == "1":
-        for departamento in departamentos:
-            departamento.remover_empleado(elemento.id_usuario)
-            if departamento.gerente is elemento:
-                departamento.gerente = None
-        registros_tiempo[:] = [r for r in registros_tiempo if r.empleado is not elemento]
-    elif opcion == "3":
-        registros_tiempo[:] = [r for r in registros_tiempo if r.proyecto is not elemento]
-    auto_guardar()
-    print("Elemento eliminado correctamente.")
-
-
-def listar_resumen_general():
-    print("\n" + "=" * 50)
-    print("             RESUMEN GENERAL - ECOTECH             ")
-    print("=" * 50)
-    print(f"\n--- EMPLEADOS ({len(empleados)}) ---")
-    for e in empleados:
-        print(f" • {e.obtener_detalles()}")
-    print(f"\n--- DEPARTAMENTOS ({len(departamentos)}) ---")
-    for d in departamentos:
-        print(f" • {d.obtener_detalles()}")
-    print(f"\n--- PROYECTOS ({len(proyectos)}) ---")
-    for p in proyectos:
-        print(f" • {p.obtener_detalles()}")
-    print(f"\n--- REGISTROS DE TIEMPO ({len(registros_tiempo)}) ---")
-    for r in registros_tiempo:
-        print(f" • {r.obtener_detalles()}")
-    print("=" * 50)
-
-
-def menu_principal():
-    while True:
-        print("\n" + " SYSTEMA DE GESTIÓN ECOTECH ".center(40, "="))
-        print("1. Registrar Empleado / Gerente")
-        print("2. Crear Departamento")
-        print("3. Crear Proyecto")
-        print("4. Registrar Horas Trabajadas")
-        print("5. Ver Resumen General del Sistema")
-        print("6. Modificar datos")
-        print("7. Eliminar datos")
-        print("8. Salir")
-        print("=" * 40)
-
-        opcion = input("Selecciona una opción (1-8): ").strip()
         if opcion == "1":
-            registrar_empleado_o_gerente()
+            ruta = os.path.join(carpeta_salida, "Reporte_Proyectos_ECOTECH.pdf")
+            informe = InformePDF("Consolidado General de Proyectos", datos_reporte)
+            if informe.generar(ruta):
+                print(f"\n[ÉXITO] Informe PDF generado en: {ruta}")
         elif opcion == "2":
-            crear_departamento()
-        elif opcion == "3":
-            crear_proyecto()
-        elif opcion == "4":
-            registrar_horas_trabajo()
-        elif opcion == "5":
-            listar_resumen_general()
-            input("\nPresione Enter para volver al menú principal...")
-        elif opcion == "6":
-            modificar_datos()
-        elif opcion == "7":
-            eliminar_datos()
-        elif opcion == "8":
-            auto_guardar()
-            print("\nDatos guardados en 'datos_ecotech.json'. ¡Hasta luego!")
-            sys.exit()
-
+            ruta = os.path.join(carpeta_salida, "Reporte_Proyectos_ECOTECH.xlsx")
+            informe = InformeExcel("Consolidado General de Proyectos", datos_reporte)
+            if informe.generar(ruta):
+                print(f"\n[ÉXITO] Informe Excel generado en: {ruta}")
+        else:
+            print("\nOpción inválida.")
+        pausar()
 
 if __name__ == "__main__":
-    menu_principal()
+    app = MenuApp()
+    app.iniciar_sistema()
