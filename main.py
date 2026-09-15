@@ -4,9 +4,7 @@
 
 import os
 import getpass
-import secrets
 import sqlite3
-import time
 from datetime import datetime
 from database.database import Database
 
@@ -27,7 +25,6 @@ from repositorios.usuario_repository import UsuarioRepository
 # Importación del Módulo de Informes
 from informes.informe_pdf import InformePDF
 from informes.informe_excel import InformeExcel
-from servicios.correo import enviar_codigo_verificacion
 
 def limpiar_pantalla():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -92,33 +89,13 @@ class MenuApp:
 
             if row:
                 usuario = Usuario(row[0], row[1], email, row[3], row[4])
-                metodo = input("\n1. Contraseña\n2. Código enviado por correo\nSeleccione el método: ").strip()
-                if metodo == "1":
-                    if not usuario.password_hash:
-                        print("Esta cuenta aún no tiene contraseña. Cree una para continuar.")
-                        self.configurar_password(usuario)
-                    else:
-                        contraseña = getpass.getpass("Contraseña: ")
-                        if not usuario.verificar_contraseña(contraseña):
-                            raise ValueError("La contraseña es incorrecta.")
-                elif metodo == "2":
-                    codigo = f"{secrets.randbelow(1_000_000):06d}"
-                    expira_en = time.monotonic() + 600
-                    try:
-                        enviar_codigo_verificacion(email, codigo)
-                    except (RuntimeError, OSError) as error:
-                        raise ValueError(f"No se pudo enviar el código: {error}") from error
-                    print("Se envió un código de verificación a su correo.")
-                    codigo_ingresado = input("Código de verificación: ").strip()
-                    if time.monotonic() > expira_en:
-                        raise ValueError("El código de verificación expiró.")
-                    if codigo_ingresado != codigo:
-                        raise ValueError("El código de verificación es incorrecto.")
-                    if not usuario.password_hash:
-                        print("Configure una contraseña para proteger su cuenta.")
-                        self.configurar_password(usuario)
+                if not usuario.password_hash:
+                    print("Esta cuenta aún no tiene contraseña. Cree una para continuar.")
+                    self.configurar_password(usuario)
                 else:
-                    raise ValueError("Método de acceso inválido.")
+                    contraseña = getpass.getpass("Contraseña: ")
+                    if not usuario.verificar_contraseña(contraseña):
+                        raise ValueError("La contraseña es incorrecta.")
 
                 self.usuario_actual = usuario
                 print(f"\n[ÉXITO] ¡Bienvenido(a), {self.usuario_actual.nombre}!")
