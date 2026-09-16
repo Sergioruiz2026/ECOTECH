@@ -22,7 +22,7 @@ class RegistroTiempoRepository(RepositorioBase):
                 INSERT INTO registros_tiempo (id_empleado, id_proyecto, horas_trabajadas, fecha, descripcion)
                 VALUES (?, ?, ?, ?, ?)
             """, (
-                registro.empleado.id_usuario,
+                registro.empleado.id_empleado,
                 registro.proyecto.id_proyecto,
                 registro.horas_trabajadas,
                 registro._fecha,
@@ -66,7 +66,7 @@ class RegistroTiempoRepository(RepositorioBase):
                 SET id_empleado = ?, id_proyecto = ?, horas_trabajadas = ?, fecha = ?, descripcion = ?
                 WHERE id_registro = ?
             """, (
-                registro.empleado.id_usuario,
+                registro.empleado.id_empleado,
                 registro.proyecto.id_proyecto,
                 registro.horas_trabajadas,
                 registro._fecha,

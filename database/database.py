@@ -55,23 +55,32 @@ class Database:
                   AND NOT EXISTS (SELECT 1 FROM usuarios WHERE rol = 'admin')
             """)
 
-            # Tabla Empleados (Hereda atributos de Usuario)
-            
+            columnas_empleado = [
+                fila[1] for fila in cursor.execute("PRAGMA table_info(empleados)")
+            ]
+            if "id_usuario" in columnas_empleado and "id_empleado" not in columnas_empleado:
+                conn.commit()
+                self._migrar_tablas_empleados(conn)
+
+            # Tabla Empleados (asociación opcional con Usuario)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS empleados (
-                    id_usuario INTEGER PRIMARY KEY,
+                    id_empleado INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT NOT NULL,
+                    email TEXT NOT NULL,
                     cargo TEXT NOT NULL,
                     tarifa_hora REAL NOT NULL CHECK(tarifa_hora > 0),
-                    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+                    id_usuario INTEGER UNIQUE NULL,
+                    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
                 );
             """)
 
-            # Tabla Gerentes (Hereda de Empleado)
+            # Tabla Gerentes (especialización de Empleado)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS gerentes (
-                    id_usuario INTEGER PRIMARY KEY,
+                    id_empleado INTEGER PRIMARY KEY,
                     bono_liderazgo REAL DEFAULT 1.0 CHECK(bono_liderazgo > 0),
-                    FOREIGN KEY (id_usuario) REFERENCES empleados(id_usuario) ON DELETE CASCADE
+                    FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE
                 );
             """)
 
@@ -81,7 +90,7 @@ class Database:
                     id_departamento INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT UNIQUE NOT NULL,
                     id_gerente INTEGER NULL,
-                    FOREIGN KEY (id_gerente) REFERENCES gerentes(id_usuario) ON DELETE SET NULL
+                    FOREIGN KEY (id_gerente) REFERENCES gerentes(id_empleado) ON DELETE SET NULL
                 );
             """)
 
@@ -92,7 +101,7 @@ class Database:
                     id_empleado INTEGER NOT NULL,
                     PRIMARY KEY (id_departamento, id_empleado),
                     FOREIGN KEY (id_departamento) REFERENCES departamentos(id_departamento) ON DELETE CASCADE,
-                    FOREIGN KEY (id_empleado) REFERENCES empleados(id_usuario) ON DELETE CASCADE
+                    FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE
                 );
             """)
 
@@ -115,13 +124,109 @@ class Database:
                     horas_trabajadas REAL NOT NULL CHECK(horas_trabajadas > 0),
                     fecha TEXT NOT NULL,
                     descripcion TEXT,
-                    FOREIGN KEY (id_empleado) REFERENCES empleados(id_usuario) ON DELETE CASCADE,
+                    FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE,
                     FOREIGN KEY (id_proyecto) REFERENCES proyectos(id_proyecto) ON DELETE CASCADE
                 );
             """)
 
             conn.commit()
             print("Base de datos inicializada correctamente.")
+
+    def _migrar_tablas_empleados(self, conn: sqlite3.Connection):
+        """Migra el esquema heredado de empleados con PK compartida."""
+        conn.execute("PRAGMA foreign_keys = OFF")
+
+        tablas_anteriores = (
+            "registros_tiempo",
+            "departamento_empleados",
+            "departamentos",
+            "gerentes",
+            "empleados",
+        )
+        for tabla in tablas_anteriores:
+            conn.execute(f"ALTER TABLE {tabla} RENAME TO {tabla}_legacy")
+
+        conn.execute("""
+            CREATE TABLE empleados (
+                id_empleado INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                email TEXT NOT NULL,
+                cargo TEXT NOT NULL,
+                tarifa_hora REAL NOT NULL CHECK(tarifa_hora > 0),
+                id_usuario INTEGER UNIQUE NULL,
+                FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO empleados (id_empleado, nombre, email, cargo, tarifa_hora, id_usuario)
+            SELECT e.id_usuario, u.nombre, u.email, e.cargo, e.tarifa_hora, e.id_usuario
+            FROM empleados_legacy e
+            JOIN usuarios u ON u.id_usuario = e.id_usuario
+        """)
+
+        conn.execute("""
+            CREATE TABLE gerentes (
+                id_empleado INTEGER PRIMARY KEY,
+                bono_liderazgo REAL DEFAULT 1.0 CHECK(bono_liderazgo > 0),
+                FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("""
+            INSERT INTO gerentes (id_empleado, bono_liderazgo)
+            SELECT id_usuario, bono_liderazgo FROM gerentes_legacy
+        """)
+
+        conn.execute("""
+            CREATE TABLE departamentos (
+                id_departamento INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                id_gerente INTEGER NULL,
+                FOREIGN KEY (id_gerente) REFERENCES gerentes(id_empleado) ON DELETE SET NULL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO departamentos (id_departamento, nombre, id_gerente)
+            SELECT id_departamento, nombre, id_gerente FROM departamentos_legacy
+        """)
+
+        conn.execute("""
+            CREATE TABLE departamento_empleados (
+                id_departamento INTEGER NOT NULL,
+                id_empleado INTEGER NOT NULL,
+                PRIMARY KEY (id_departamento, id_empleado),
+                FOREIGN KEY (id_departamento) REFERENCES departamentos(id_departamento) ON DELETE CASCADE,
+                FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("""
+            INSERT INTO departamento_empleados (id_departamento, id_empleado)
+            SELECT id_departamento, id_empleado FROM departamento_empleados_legacy
+        """)
+
+        conn.execute("""
+            CREATE TABLE registros_tiempo (
+                id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_empleado INTEGER NOT NULL,
+                id_proyecto INTEGER NOT NULL,
+                horas_trabajadas REAL NOT NULL CHECK(horas_trabajadas > 0),
+                fecha TEXT NOT NULL,
+                descripcion TEXT,
+                FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado) ON DELETE CASCADE,
+                FOREIGN KEY (id_proyecto) REFERENCES proyectos(id_proyecto) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("""
+            INSERT INTO registros_tiempo
+                (id_registro, id_empleado, id_proyecto, horas_trabajadas, fecha, descripcion)
+            SELECT id_registro, id_empleado, id_proyecto, horas_trabajadas, fecha, descripcion
+            FROM registros_tiempo_legacy
+        """)
+
+        for tabla in tablas_anteriores:
+            conn.execute(f"DROP TABLE {tabla}_legacy")
+
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys = ON")
 
 
 if __name__ == "__main__":

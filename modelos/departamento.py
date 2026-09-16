@@ -48,7 +48,7 @@ class Departamento:
 
     def remover_empleado(self, id_empleado: int):
         """Elimina un empleado del departamento por su ID."""
-        self._empleados = [e for e in self._empleados if e.id_usuario != id_empleado]
+        self._empleados = [e for e in self._empleados if e.id_empleado != id_empleado]
 
     def obtener_detalles(self) -> str:
         nom_gerente = self._gerente.nombre if self._gerente else "Sin Gerente asignado"

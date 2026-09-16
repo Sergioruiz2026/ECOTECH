@@ -3,7 +3,7 @@
 import json
 import os
 from typing import List, Dict, Tuple
-from modelos import Empleado, Gerente, Departamento, Proyecto, RegistroTiempo
+from modelos import Usuario, Empleado, Gerente, Departamento, Proyecto, RegistroTiempo
 
 ARCHIVO_DATOS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "datos_ecotech.json")
 
@@ -21,12 +21,20 @@ def guardar_datos(empleados: List, departamentos: List, proyectos: List, registr
         es_gerente = isinstance(emp, Gerente)
         d_emp = {
             "tipo": "gerente" if es_gerente else "empleado",
-            "id_usuario": emp.id_usuario,
+            "id_empleado": emp.id_empleado,
             "nombre": emp.nombre,
             "email": emp.obtener_email_cifrado(),
             "tarifa_hora": emp.tarifa_hora,
             "cargo": getattr(emp, "cargo", "Empleado")
         }
+        if emp.usuario:
+            d_emp["usuario"] = {
+                "id_usuario": emp.usuario.id_usuario,
+                "nombre": emp.usuario.nombre,
+                "email": emp.usuario.email,
+                "rol": emp.usuario.rol,
+                "password_hash": emp.usuario.password_hash,
+            }
         if es_gerente:
             d_emp["bono_liderazgo"] = emp.bono_liderazgo
         datos["empleados"].append(d_emp)
@@ -36,8 +44,8 @@ def guardar_datos(empleados: List, departamentos: List, proyectos: List, registr
         datos["departamentos"].append({
             "id_departamento": dept.id_departamento,
             "nombre": dept.nombre,
-            "id_gerente": dept.gerente.id_usuario if dept.gerente else None,
-            "ids_empleados": [e.id_usuario for e in dept.empleados]
+            "id_gerente": dept.gerente.id_empleado if dept.gerente else None,
+            "ids_empleados": [e.id_empleado for e in dept.empleados]
         })
 
     # Serializar Proyectos
@@ -53,7 +61,7 @@ def guardar_datos(empleados: List, departamentos: List, proyectos: List, registr
     for reg in registros_tiempo:
         datos["registros_tiempo"].append({
             "id_registro": reg.id_registro,
-            "id_empleado": reg.empleado.id_usuario,
+            "id_empleado": reg.empleado.id_empleado,
             "id_proyecto": reg.proyecto.id_proyecto,
             "horas_trabajadas": reg.horas_trabajadas,
             "fecha": reg._fecha,
@@ -80,12 +88,37 @@ def cargar_datos() -> Tuple[List, List, List, List]:
 
     # Deserializar Empleados / Gerentes
     for d in datos.get("empleados", []):
+        id_empleado = d.get("id_empleado", d.get("id_usuario"))
+        datos_usuario = d.get("usuario")
+        usuario = None
+        if datos_usuario:
+            usuario = Usuario(
+                datos_usuario["id_usuario"],
+                datos_usuario["nombre"],
+                datos_usuario["email"],
+                datos_usuario.get("rol", "usuario"),
+                datos_usuario.get("password_hash"),
+            )
         if d.get("tipo") == "gerente":
-            emp = Gerente(d["id_usuario"], d["nombre"], d["email"], d["tarifa_hora"], d.get("bono_liderazgo", 1.0))
+            emp = Gerente(
+                id_empleado,
+                d["nombre"],
+                d["email"],
+                d["tarifa_hora"],
+                d.get("bono_liderazgo", 1.0),
+                usuario,
+            )
         else:
-            emp = Empleado(d["id_usuario"], d["nombre"], d["email"], d["cargo"], d["tarifa_hora"])
+            emp = Empleado(
+                id_empleado,
+                d["nombre"],
+                d["email"],
+                d["cargo"],
+                d["tarifa_hora"],
+                usuario,
+            )
         empleados.append(emp)
-        mapa_empleados[emp.id_usuario] = emp
+        mapa_empleados[emp.id_empleado] = emp
 
     # Deserializar Departamentos
     departamentos = []

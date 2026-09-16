@@ -1,11 +1,28 @@
-#Gerente hereda de Empleado e incluye la gestión de un departamento y bonificaciones.
+# Gerente hereda de Empleado e incluye gestión de equipo y bonificaciones.
+
+from typing import Optional
 
 from modelos.empleado import Empleado
+from modelos.usuario import Usuario
 
 class Gerente(Empleado):
-    def __init__(self, id_usuario: int, nombre: str, email: str, tarifa_hora: float, bono_liderazgo: float = 1.0):
-        # El cargo de un Gerente se asigna automáticamente como 'Gerente'
-        super().__init__(id_usuario, nombre, email, cargo="Gerente", tarifa_hora=tarifa_hora)
+    def __init__(
+        self,
+        id_empleado: int,
+        nombre: str,
+        email: str,
+        tarifa_hora: float,
+        bono_liderazgo: float = 1.0,
+        usuario: Optional[Usuario] = None,
+    ):
+        super().__init__(
+            id_empleado,
+            nombre,
+            email,
+            cargo="Gerente",
+            tarifa_hora=tarifa_hora,
+            usuario=usuario,
+        )
         self.bono_liderazgo = bono_liderazgo
         self._empleados_a_cargo = []
 

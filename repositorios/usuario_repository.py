@@ -11,11 +11,11 @@ class UsuarioRepository(RepositorioBase):
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
             
-            # Se usa obtener_email_cifrado() para guardar la versión cifrada antes del @
+            # Se incluye el hash para conservar la contraseña definida al registrar.
             
             cursor.execute(
-                "INSERT INTO usuarios (nombre, email, rol) VALUES (?, ?, ?)",
-                (usuario.nombre, usuario.obtener_email_cifrado(), usuario.rol)
+                "INSERT INTO usuarios (nombre, email, rol, password_hash) VALUES (?, ?, ?, ?)",
+                (usuario.nombre, usuario.obtener_email_cifrado(), usuario.rol, usuario.password_hash)
             )
             usuario._id_usuario = cursor.lastrowid
             conn.commit()

@@ -290,8 +290,9 @@ class MenuApp:
             return
         for empleado in empleados:
             print(
-                f"ID: {empleado.id_usuario} | Nombre: {empleado.nombre} | "
-                f"Cargo: {empleado.cargo} | Tarifa/Hora: ${empleado.tarifa_hora:,.2f}"
+                f"ID: {empleado.id_empleado} | Nombre: {empleado.nombre} | "
+                f"Cargo: {empleado.cargo} | Tarifa/Hora: ${empleado.tarifa_hora:,.2f} | "
+                f"Usuario: {empleado.usuario.id_usuario if empleado.usuario else 'Sin asociar'}"
             )
 
     def menu_empleados(self):
@@ -305,6 +306,7 @@ class MenuApp:
                 print("2. Buscar Empleado por ID")
                 print("3. Actualizar Empleado")
                 print("4. Eliminar Empleado")
+                print("5. Asociar cuenta de Usuario")
             print("0. Volver al Menú Principal")
             opcion = input("\nSeleccione una opción: ").strip()
 
@@ -316,7 +318,7 @@ class MenuApp:
                     tarifa = float(input("Tarifa por hora ($): "))
                     empleado = Empleado(0, nombre, email, cargo, tarifa)
                     if self.repo_empleado.crear(empleado):
-                        print(f"\n[ÉXITO] Empleado registrado correctamente con ID: {empleado.id_usuario}")
+                        print(f"\n[ÉXITO] Empleado registrado correctamente con ID: {empleado.id_empleado}")
                     else:
                         print("\n[ERROR] No se pudo guardar el empleado.")
                 except ValueError as e:
@@ -329,8 +331,9 @@ class MenuApp:
                     emp = self.repo_empleado.obtener_por_id(id_emp)
                     if emp:
                         print("\nDatos encontrados:")
-                        print(f"ID: {emp.id_usuario} | Nombre: {emp.nombre} | Email Hash: {emp.obtener_email_cifrado()}")
+                        print(f"ID: {emp.id_empleado} | Nombre: {emp.nombre} | Email Hash: {emp.obtener_email_cifrado()}")
                         print(f"Cargo: {emp.cargo} | Tarifa/Hora: ${emp.tarifa_hora:,.2f}")
+                        print(f"Usuario asociado: {emp.usuario.id_usuario if emp.usuario else 'Ninguno'}")
                     else:
                         print("\nEmpleado no encontrado.")
                 except ValueError:
@@ -376,8 +379,35 @@ class MenuApp:
                     print("\nID inválido.")
                 pausar()
 
+            elif opcion == "5" and self.es_admin():
+                self.asociar_usuario_a_empleado()
+
             elif opcion == "0":
                 break
+
+    def asociar_usuario_a_empleado(self):
+        if not self.verificar_admin():
+            return
+
+        try:
+            id_empleado = int(input("ID del empleado: "))
+            id_usuario = int(input("ID del usuario existente: "))
+            empleado = self.repo_empleado.obtener_por_id(id_empleado)
+            usuario = self.repo_usuario.obtener_por_id(id_usuario)
+
+            if not empleado:
+                print("Empleado no encontrado.")
+            elif not usuario:
+                print("Usuario no encontrado.")
+            else:
+                empleado.asociar_usuario(usuario)
+                if self.repo_empleado.actualizar(empleado):
+                    print("\n[ÉXITO] Cuenta de Usuario asociada correctamente.")
+                else:
+                    print("\n[ERROR] No se pudo asociar la cuenta.")
+        except (ValueError, sqlite3.IntegrityError) as error:
+            print(f"\n[ERROR]: {error}")
+        pausar()
 
     # ==========================================
     # 2. MENÚ DEPARTAMENTOS

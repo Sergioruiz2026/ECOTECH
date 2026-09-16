@@ -1,8 +1,11 @@
 import sqlite3
-from typing import List, Optional
+from typing import List
+
 from modelos.empleado import Empleado
+from modelos.usuario import Usuario
 from repositorios.repositorio_base import RepositorioBase
 from database.database import Database
+
 
 class EmpleadoRepository(RepositorioBase):
     def __init__(self, db: Database = None):
@@ -15,30 +18,32 @@ class EmpleadoRepository(RepositorioBase):
     def obtener_todos(self) -> List[Empleado]:
         with self.obtener_conexion() as conexion:
             filas = conexion.execute('''
-                SELECT u.id_usuario, u.nombre, u.email, e.cargo, e.tarifa_hora
-                FROM usuarios u
-                JOIN empleados e ON u.id_usuario = e.id_usuario
-                ORDER BY u.id_usuario
+                SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                       u.id_usuario AS usuario_id, u.nombre AS usuario_nombre,
+                       u.email AS usuario_email, u.rol AS usuario_rol,
+                       u.password_hash
+                FROM empleados e
+                LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
+                ORDER BY e.id_empleado
             ''').fetchall()
-        return [Empleado(row[0], row[1], row[2], row[3], row[4]) for row in filas]
+        return [self._construir_empleado(row) for row in filas]
 
     def guardar(self, empleado: Empleado) -> bool:
         conexion = self.obtener_conexion()
         cursor = conexion.cursor()
         try:
-            # 1. Insertar en tabla usuarios
             cursor.execute(
-                "INSERT INTO usuarios (nombre, email) VALUES (?, ?)",
-                (empleado.nombre, empleado.obtener_email_cifrado())
+                "INSERT INTO empleados "
+                "(nombre, email, cargo, tarifa_hora, id_usuario) VALUES (?, ?, ?, ?, ?)",
+                (
+                    empleado.nombre,
+                    empleado.obtener_email_cifrado(),
+                    empleado.cargo,
+                    empleado.tarifa_hora,
+                    empleado.usuario.id_usuario if empleado.usuario else None,
+                ),
             )
-            id_usuario = cursor.lastrowid
-            empleado._id_usuario = id_usuario
-
-            # 2. Insertar en tabla empleados
-            cursor.execute(
-                "INSERT INTO empleados (id_usuario, cargo, tarifa_hora) VALUES (?, ?, ?)",
-                (id_usuario, empleado.cargo, empleado.tarifa_hora)
-            )
+            empleado._id_empleado = cursor.lastrowid
             conexion.commit()
             return True
         except sqlite3.Error as e:
@@ -49,26 +54,28 @@ class EmpleadoRepository(RepositorioBase):
             conexion.close()
 
     def actualizar(self, empleado: Empleado) -> bool:
-        """Actualiza los datos del empleado y su usuario base."""
-        if not empleado.id_usuario:
-            print("Error: El empleado no tiene id_usuario asignado.")
+        """Actualiza la ficha laboral y su asociación opcional."""
+        if not empleado.id_empleado:
+            print("Error: El empleado no tiene id_empleado asignado.")
             return False
 
         conexion = self.obtener_conexion()
         cursor = conexion.cursor()
         try:
-            # Actualizar datos de usuario
             cursor.execute(
-                "UPDATE usuarios SET nombre = ?, email = ? WHERE id_usuario = ?",
-                (empleado.nombre, empleado.obtener_email_cifrado(), empleado.id_usuario)
-            )
-            # Actualizar datos de empleado
-            cursor.execute(
-                "UPDATE empleados SET cargo = ?, tarifa_hora = ? WHERE id_usuario = ?",
-                (empleado.cargo, empleado.tarifa_hora, empleado.id_usuario)
+                "UPDATE empleados SET nombre = ?, email = ?, cargo = ?, "
+                "tarifa_hora = ?, id_usuario = ? WHERE id_empleado = ?",
+                (
+                    empleado.nombre,
+                    empleado.obtener_email_cifrado(),
+                    empleado.cargo,
+                    empleado.tarifa_hora,
+                    empleado.usuario.id_usuario if empleado.usuario else None,
+                    empleado.id_empleado,
+                ),
             )
             conexion.commit()
-            return True
+            return cursor.rowcount > 0
         except sqlite3.Error as e:
             conexion.rollback()
             print(f"Error al actualizar empleado: {e}")
@@ -76,12 +83,15 @@ class EmpleadoRepository(RepositorioBase):
         finally:
             conexion.close()
 
-    def eliminar(self, id_usuario: int) -> bool:
-        """Elimina un empleado por su ID. La cascada elimina el registro en usuarios y empleados."""
+    def eliminar(self, id_empleado: int) -> bool:
+        """Elimina una ficha laboral sin eliminar la cuenta de usuario."""
         conexion = self.obtener_conexion()
         cursor = conexion.cursor()
         try:
-            cursor.execute("DELETE FROM usuarios WHERE id_usuario = ?", (id_usuario,))
+            cursor.execute(
+                "DELETE FROM empleados WHERE id_empleado = ?",
+                (id_empleado,),
+            )
             conexion.commit()
             return cursor.rowcount > 0
         except sqlite3.Error as e:
@@ -91,18 +101,25 @@ class EmpleadoRepository(RepositorioBase):
         finally:
             conexion.close()
 
-    def obtener_por_id(self, id_usuario: int) -> Empleado | None:
-        conexion = self.obtener_conexion()
-        cursor = conexion.cursor()
-        cursor.execute('''
-            SELECT u.id_usuario, u.nombre, u.email, e.cargo, e.tarifa_hora
-            FROM usuarios u
-            JOIN empleados e ON u.id_usuario = e.id_usuario
-            WHERE u.id_usuario = ?
-        ''', (id_usuario,))
-        row = cursor.fetchone()
-        conexion.close()
+    def obtener_por_id(self, id_empleado: int) -> Empleado | None:
+        with self.obtener_conexion() as conexion:
+            row = conexion.execute('''
+                SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                       u.id_usuario AS usuario_id, u.nombre AS usuario_nombre,
+                       u.email AS usuario_email, u.rol AS usuario_rol,
+                       u.password_hash
+                FROM empleados e
+                LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
+                WHERE e.id_empleado = ?
+            ''', (id_empleado,)).fetchone()
 
         if row:
-            return Empleado(row[0], row[1], row[2], row[3], row[4])
+            return self._construir_empleado(row)
         return None
+
+    @staticmethod
+    def _construir_empleado(row) -> Empleado:
+        usuario = None
+        if row[5] is not None:
+            usuario = Usuario(row[5], row[6], row[7], row[8], row[9])
+        return Empleado(row[0], row[1], row[2], row[3], row[4], usuario)
