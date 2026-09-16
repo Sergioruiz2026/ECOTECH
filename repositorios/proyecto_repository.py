@@ -15,7 +15,7 @@ class ProyectoRepository(RepositorioBase):
         return proyecto
 
     def obtener_todos(self) -> List[Proyecto]:
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             filas = conexion.execute(
                 "SELECT id_proyecto, nombre, presupuesto, estado FROM proyectos ORDER BY id_proyecto"
             ).fetchall()

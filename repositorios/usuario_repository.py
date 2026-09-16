@@ -8,7 +8,7 @@ from modelos.usuario import Usuario
 class UsuarioRepository(RepositorioBase):
 
     def crear(self, usuario: Usuario) -> Usuario:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             
             # Se incluye el hash para conservar la contraseña definida al registrar.
@@ -22,7 +22,7 @@ class UsuarioRepository(RepositorioBase):
         return usuario
 
     def obtener_por_id(self, id_usuario: int) -> Optional[Usuario]:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM usuarios WHERE id_usuario = ?", (id_usuario,))
             row = cursor.fetchone()
@@ -32,7 +32,7 @@ class UsuarioRepository(RepositorioBase):
 
     def obtener_todos(self) -> List[Usuario]:
         usuarios = []
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM usuarios")
             rows = cursor.fetchall()
@@ -41,7 +41,7 @@ class UsuarioRepository(RepositorioBase):
         return usuarios
 
     def actualizar(self, usuario: Usuario) -> bool:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             # Al actualizar también nos aseguramos de guardar la versión cifrada
             cursor.execute(
@@ -52,18 +52,18 @@ class UsuarioRepository(RepositorioBase):
             return cursor.rowcount > 0
 
     def eliminar(self, id_usuario: int) -> bool:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM usuarios WHERE id_usuario = ?", (id_usuario,))
             conn.commit()
             return cursor.rowcount > 0
 
     def contar(self) -> int:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             return conn.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
 
     def contar_admins(self) -> int:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             return conn.execute("SELECT COUNT(*) FROM usuarios WHERE rol = 'admin'").fetchone()[0]
 
     def actualizar_password(self, id_usuario: int, password_hash: str) -> bool:

@@ -17,7 +17,7 @@ class EmpleadoRepository(RepositorioBase):
         return empleado
 
     def obtener_todos(self) -> List[Empleado]:
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             filas = conexion.execute('''
                   SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
                       g.bono_liderazgo,
@@ -111,7 +111,7 @@ class EmpleadoRepository(RepositorioBase):
             conexion.close()
 
     def obtener_por_id(self, id_empleado: int) -> Empleado | None:
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             row = conexion.execute('''
                   SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
                       g.bono_liderazgo,

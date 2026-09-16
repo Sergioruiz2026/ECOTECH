@@ -16,7 +16,7 @@ class DepartamentoRepository(RepositorioBase):
         return departamento
 
     def obtener_todos(self) -> List[Departamento]:
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             filas = conexion.execute(
                 "SELECT id_departamento, nombre FROM departamentos ORDER BY id_departamento"
             ).fetchall()
@@ -88,7 +88,7 @@ class DepartamentoRepository(RepositorioBase):
             conexion.close()
 
     def obtener_por_id(self, id_departamento: int) -> Departamento | None:
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             row = conexion.execute(
                 "SELECT id_departamento, nombre "
                 "FROM departamentos WHERE id_departamento = ?",
@@ -149,7 +149,7 @@ class DepartamentoRepository(RepositorioBase):
     def _reconstruir_departamento(self, fila) -> Departamento:
         departamento = Departamento(fila[0], fila[1])
 
-        with self.obtener_conexion() as conexion:
+        with self.db.contexto_conexion() as conexion:
             empleados = conexion.execute(
                 "SELECT id_empleado FROM departamento_empleados "
                 "WHERE id_departamento = ? ORDER BY id_empleado",

@@ -16,7 +16,7 @@ class RegistroTiempoRepository(RepositorioBase):
         self.proy_repo = ProyectoRepository(db)
 
     def crear(self, registro: RegistroTiempo) -> RegistroTiempo:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO registros_tiempo (id_empleado, id_proyecto, horas_trabajadas, fecha, descripcion)
@@ -33,7 +33,7 @@ class RegistroTiempoRepository(RepositorioBase):
         return registro
 
     def obtener_por_id(self, id_registro: int) -> Optional[RegistroTiempo]:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM registros_tiempo WHERE id_registro = ?", (id_registro,))
             row = cursor.fetchone()
@@ -48,7 +48,7 @@ class RegistroTiempoRepository(RepositorioBase):
 
     def obtener_todos(self) -> List[RegistroTiempo]:
         registros = []
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id_registro FROM registros_tiempo")
             rows = cursor.fetchall()
@@ -59,7 +59,7 @@ class RegistroTiempoRepository(RepositorioBase):
         return registros
 
     def actualizar(self, registro: RegistroTiempo) -> bool:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE registros_tiempo 
@@ -77,7 +77,7 @@ class RegistroTiempoRepository(RepositorioBase):
             return cursor.rowcount > 0
 
     def eliminar(self, id_registro: int) -> bool:
-        with self.db.obtener_conexion() as conn:
+        with self.db.contexto_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM registros_tiempo WHERE id_registro = ?", (id_registro,))
             conn.commit()
