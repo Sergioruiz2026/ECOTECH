@@ -438,14 +438,13 @@ class MenuApp:
             if opcion == "1":
                 nombre = input("Nombre del Departamento: ").strip()
                 try:
-                    id_gerente = int(input("ID del Gerente a cargo: "))
                     dept = Departamento(0, nombre)
                     if self.repo_departamento.crear(dept):
                         print(f"\n[ÉXITO] Departamento creado con ID: {dept.id_departamento}")
                     else:
                         print("\n[ERROR] No se pudo crear el departamento.")
-                except ValueError:
-                    print("\n[ERROR] ID de gerente inválido.")
+                except ValueError as error:
+                    print(f"\n[ERROR]: {error}")
                 pausar()
 
             elif opcion == "2" and self.es_admin():
@@ -612,6 +611,10 @@ class MenuApp:
                 id_emp = int(input("ID del Empleado: "))
                 id_proy = int(input("ID del Proyecto: "))
                 horas = float(input("Horas trabajadas: "))
+                if horas <= 0:
+                    raise ValueError("Las horas trabajadas deben ser mayores a 0.")
+                if horas > 24:
+                    raise ValueError("Las horas trabajadas no pueden superar las 24 horas por jornada.")
                 descripcion = input("Descripción de la tarea: ").strip()
                 fecha = datetime.now().strftime('%Y-%m-%d')
 

@@ -33,10 +33,11 @@ class RegistroTiempo:
 
     @horas_trabajadas.setter
     def horas_trabajadas(self, horas: float):
-        if horas > 0:
-            self._horas_trabajadas = horas
-        else:
+        if horas <= 0:
             raise ValueError("Las horas trabajadas deben ser mayores a 0.")
+        if horas > 24:
+            raise ValueError("Las horas trabajadas no pueden superar las 24 horas por jornada.")
+        self._horas_trabajadas = horas
 
     def calcular_costo_laboral(self) -> float:
         """Calcula el costo del registro según la tarifa por hora del empleado."""

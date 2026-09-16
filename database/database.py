@@ -88,11 +88,15 @@ class Database:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS departamentos (
                     id_departamento INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT UNIQUE NOT NULL,
-                    id_gerente INTEGER NULL,
-                    FOREIGN KEY (id_gerente) REFERENCES gerentes(id_empleado) ON DELETE SET NULL
+                    nombre TEXT UNIQUE NOT NULL
                 );
             """)
+
+            columnas_departamento = [
+                fila[1] for fila in cursor.execute("PRAGMA table_info(departamentos)")
+            ]
+            if "id_gerente" in columnas_departamento:
+                self._migrar_departamentos_sin_gerente(conn)
 
             # Relación Muchos a Muchos / Asignación: Empleado - Departamento
             cursor.execute("""
@@ -179,14 +183,12 @@ class Database:
         conn.execute("""
             CREATE TABLE departamentos (
                 id_departamento INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT UNIQUE NOT NULL,
-                id_gerente INTEGER NULL,
-                FOREIGN KEY (id_gerente) REFERENCES gerentes(id_empleado) ON DELETE SET NULL
+                nombre TEXT UNIQUE NOT NULL
             )
         """)
         conn.execute("""
-            INSERT INTO departamentos (id_departamento, nombre, id_gerente)
-            SELECT id_departamento, nombre, id_gerente FROM departamentos_legacy
+            INSERT INTO departamentos (id_departamento, nombre)
+            SELECT id_departamento, nombre FROM departamentos_legacy
         """)
 
         conn.execute("""
@@ -201,6 +203,12 @@ class Database:
         conn.execute("""
             INSERT INTO departamento_empleados (id_departamento, id_empleado)
             SELECT id_departamento, id_empleado FROM departamento_empleados_legacy
+        """)
+        conn.execute("""
+            INSERT OR IGNORE INTO departamento_empleados (id_departamento, id_empleado)
+            SELECT id_departamento, id_gerente
+            FROM departamentos_legacy
+            WHERE id_gerente IS NOT NULL
         """)
 
         conn.execute("""
@@ -225,6 +233,55 @@ class Database:
         for tabla in tablas_anteriores:
             conn.execute(f"DROP TABLE {tabla}_legacy")
 
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys = ON")
+
+    def _migrar_departamentos_sin_gerente(self, conn: sqlite3.Connection):
+        """Elimina id_gerente conservando sus asociaciones como empleados."""
+        conn.execute("PRAGMA foreign_keys = OFF")
+
+        conn.execute("ALTER TABLE departamentos RENAME TO departamentos_legacy")
+        conn.execute(
+            "ALTER TABLE departamento_empleados "
+            "RENAME TO departamento_empleados_legacy"
+        )
+
+        conn.execute("""
+            CREATE TABLE departamentos (
+                id_departamento INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO departamentos (id_departamento, nombre)
+            SELECT id_departamento, nombre FROM departamentos_legacy
+        """)
+
+        conn.execute("""
+            CREATE TABLE departamento_empleados (
+                id_departamento INTEGER NOT NULL,
+                id_empleado INTEGER NOT NULL,
+                PRIMARY KEY (id_departamento, id_empleado),
+                FOREIGN KEY (id_departamento) REFERENCES departamentos(id_departamento)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleado)
+                    ON DELETE CASCADE
+            )
+        """)
+        conn.execute("""
+            INSERT INTO departamento_empleados (id_departamento, id_empleado)
+            SELECT id_departamento, id_empleado
+            FROM departamento_empleados_legacy
+        """)
+        conn.execute("""
+            INSERT OR IGNORE INTO departamento_empleados (id_departamento, id_empleado)
+            SELECT id_departamento, id_gerente
+            FROM departamentos_legacy
+            WHERE id_gerente IS NOT NULL
+        """)
+
+        conn.execute("DROP TABLE departamento_empleados_legacy")
+        conn.execute("DROP TABLE departamentos_legacy")
         conn.commit()
         conn.execute("PRAGMA foreign_keys = ON")
 

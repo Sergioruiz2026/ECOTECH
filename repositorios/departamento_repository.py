@@ -1,10 +1,8 @@
 #Maneja los departamentos y su relación de empleados asociados
 
 import sqlite3
-from typing import List, Optional
+from typing import List
 from modelos.departamento import Departamento
-from modelos.gerente import Gerente
-from modelos.usuario import Usuario
 from repositorios.repositorio_base import RepositorioBase
 from repositorios.empleado_repository import EmpleadoRepository
 from database.database import Database
@@ -20,7 +18,7 @@ class DepartamentoRepository(RepositorioBase):
     def obtener_todos(self) -> List[Departamento]:
         with self.obtener_conexion() as conexion:
             filas = conexion.execute(
-                "SELECT id_departamento, nombre, id_gerente FROM departamentos ORDER BY id_departamento"
+                "SELECT id_departamento, nombre FROM departamentos ORDER BY id_departamento"
             ).fetchall()
         return [self._reconstruir_departamento(row) for row in filas]
 
@@ -29,8 +27,8 @@ class DepartamentoRepository(RepositorioBase):
         cursor = conexion.cursor()
         try:
             cursor.execute(
-                "INSERT INTO departamentos (nombre, id_gerente) VALUES (?, ?)",
-                (departamento.nombre, self._obtener_id_gerente(departamento))
+                "INSERT INTO departamentos (nombre) VALUES (?)",
+                (departamento.nombre,)
             )
             departamento._id_departamento = cursor.lastrowid
             self._guardar_empleados(cursor, departamento)
@@ -44,7 +42,7 @@ class DepartamentoRepository(RepositorioBase):
             conexion.close()
 
     def actualizar(self, departamento: Departamento) -> bool:
-        """Actualiza el nombre o gerente asignado al departamento."""
+        """Actualiza el nombre y los empleados del departamento."""
         if not departamento.id_departamento:
             print("Error: El departamento no tiene id_departamento asignado.")
             return False
@@ -53,10 +51,9 @@ class DepartamentoRepository(RepositorioBase):
         cursor = conexion.cursor()
         try:
             cursor.execute(
-                "UPDATE departamentos SET nombre = ?, id_gerente = ? WHERE id_departamento = ?",
+                "UPDATE departamentos SET nombre = ? WHERE id_departamento = ?",
                 (
                     departamento.nombre,
-                    self._obtener_id_gerente(departamento),
                     departamento.id_departamento,
                 )
             )
@@ -93,7 +90,7 @@ class DepartamentoRepository(RepositorioBase):
     def obtener_por_id(self, id_departamento: int) -> Departamento | None:
         with self.obtener_conexion() as conexion:
             row = conexion.execute(
-                "SELECT id_departamento, nombre, id_gerente "
+                "SELECT id_departamento, nombre "
                 "FROM departamentos WHERE id_departamento = ?",
                 (id_departamento,),
             ).fetchone()
@@ -139,10 +136,6 @@ class DepartamentoRepository(RepositorioBase):
             conexion.close()
 
     @staticmethod
-    def _obtener_id_gerente(departamento: Departamento) -> Optional[int]:
-        return departamento.gerente.id_empleado if departamento.gerente else None
-
-    @staticmethod
     def _guardar_empleados(cursor, departamento: Departamento) -> None:
         cursor.executemany(
             "INSERT INTO departamento_empleados (id_departamento, id_empleado) "
@@ -154,8 +147,7 @@ class DepartamentoRepository(RepositorioBase):
         )
 
     def _reconstruir_departamento(self, fila) -> Departamento:
-        gerente = self._obtener_gerente(fila[2])
-        departamento = Departamento(fila[0], fila[1], gerente)
+        departamento = Departamento(fila[0], fila[1])
 
         with self.obtener_conexion() as conexion:
             empleados = conexion.execute(
@@ -170,29 +162,3 @@ class DepartamentoRepository(RepositorioBase):
             if empleado:
                 departamento.agregar_empleado(empleado)
         return departamento
-
-    def _obtener_gerente(self, id_gerente: Optional[int]) -> Optional[Gerente]:
-        if id_gerente is None:
-            return None
-
-        with self.obtener_conexion() as conexion:
-            fila = conexion.execute(
-                "SELECT e.id_empleado, e.nombre, e.email, e.tarifa_hora, "
-                "g.bono_liderazgo, u.id_usuario AS usuario_id, "
-                "u.nombre AS usuario_nombre, u.email AS usuario_email, "
-                "u.rol AS usuario_rol, u.password_hash "
-                "FROM gerentes g "
-                "JOIN empleados e ON e.id_empleado = g.id_empleado "
-                "LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario "
-                "WHERE g.id_empleado = ?",
-                (id_gerente,),
-            ).fetchone()
-
-        if not fila:
-            return None
-
-        usuario = None
-        if fila[5] is not None:
-            usuario = Usuario(fila[5], fila[6], fila[7], fila[8], fila[9])
-
-        return Gerente(fila[0], fila[1], fila[2], fila[3], fila[4], usuario)

@@ -44,7 +44,6 @@ def guardar_datos(empleados: List, departamentos: List, proyectos: List, registr
         datos["departamentos"].append({
             "id_departamento": dept.id_departamento,
             "nombre": dept.nombre,
-            "id_gerente": dept.gerente.id_empleado if dept.gerente else None,
             "ids_empleados": [e.id_empleado for e in dept.empleados]
         })
 
@@ -123,8 +122,7 @@ def cargar_datos() -> Tuple[List, List, List, List]:
     # Deserializar Departamentos
     departamentos = []
     for d in datos.get("departamentos", []):
-        gerente = mapa_empleados.get(d.get("id_gerente")) if d.get("id_gerente") is not None else None
-        dept = Departamento(d["id_departamento"], d["nombre"], gerente)
+        dept = Departamento(d["id_departamento"], d["nombre"])
         for id_emp in d.get("ids_empleados", []):
             if id_emp in mapa_empleados:
                 dept.agregar_empleado(mapa_empleados[id_emp])

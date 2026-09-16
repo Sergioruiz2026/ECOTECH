@@ -6,10 +6,9 @@ from modelos.empleado import Empleado
 from modelos.gerente import Gerente
 
 class Departamento:
-    def __init__(self, id_departamento: int, nombre: str, gerente: Optional[Gerente] = None):
+    def __init__(self, id_departamento: int, nombre: str):
         self._id_departamento = id_departamento
         self._nombre = nombre
-        self._gerente = gerente
         self._empleados: List[Empleado] = []
 
     @property
@@ -28,14 +27,6 @@ class Departamento:
             raise ValueError("El nombre del departamento no puede estar vacío.")
 
     @property
-    def gerente(self) -> Optional[Gerente]:
-        return self._gerente
-
-    @gerente.setter
-    def gerente(self, nuevo_gerente: Gerente):
-        self._gerente = nuevo_gerente
-
-    @property
     def empleados(self) -> List[Empleado]:
         return self._empleados.copy()
 
@@ -43,15 +34,20 @@ class Departamento:
         """Asigna un empleado al departamento."""
         if empleado not in self._empleados:
             self._empleados.append(empleado)
-            if self._gerente:
-                self._gerente.asignar_empleado(empleado)
+
+    def obtener_gerente(self) -> Optional[Gerente]:
+        for empleado in self._empleados:
+            if isinstance(empleado, Gerente):
+                return empleado
+        return None
 
     def remover_empleado(self, id_empleado: int):
         """Elimina un empleado del departamento por su ID."""
         self._empleados = [e for e in self._empleados if e.id_empleado != id_empleado]
 
     def obtener_detalles(self) -> str:
-        nom_gerente = self._gerente.nombre if self._gerente else "Sin Gerente asignado"
+        gerente = self.obtener_gerente()
+        nom_gerente = gerente.nombre if gerente else "Sin Gerente asignado"
         return f"Depto [{self._id_departamento}]: {self._nombre} | Gerente: {nom_gerente} | Cant. Empleados: {len(self._empleados)}"
 
     def __str__(self) -> str:

@@ -2,6 +2,7 @@ import sqlite3
 from typing import List
 
 from modelos.empleado import Empleado
+from modelos.gerente import Gerente
 from modelos.usuario import Usuario
 from repositorios.repositorio_base import RepositorioBase
 from database.database import Database
@@ -18,11 +19,13 @@ class EmpleadoRepository(RepositorioBase):
     def obtener_todos(self) -> List[Empleado]:
         with self.obtener_conexion() as conexion:
             filas = conexion.execute('''
-                SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                  SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                      g.bono_liderazgo,
                        u.id_usuario AS usuario_id, u.nombre AS usuario_nombre,
                        u.email AS usuario_email, u.rol AS usuario_rol,
                        u.password_hash
                 FROM empleados e
+                LEFT JOIN gerentes g ON g.id_empleado = e.id_empleado
                 LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
                 ORDER BY e.id_empleado
             ''').fetchall()
@@ -104,11 +107,13 @@ class EmpleadoRepository(RepositorioBase):
     def obtener_por_id(self, id_empleado: int) -> Empleado | None:
         with self.obtener_conexion() as conexion:
             row = conexion.execute('''
-                SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                  SELECT e.id_empleado, e.nombre, e.email, e.cargo, e.tarifa_hora,
+                      g.bono_liderazgo,
                        u.id_usuario AS usuario_id, u.nombre AS usuario_nombre,
                        u.email AS usuario_email, u.rol AS usuario_rol,
                        u.password_hash
                 FROM empleados e
+                LEFT JOIN gerentes g ON g.id_empleado = e.id_empleado
                 LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
                 WHERE e.id_empleado = ?
             ''', (id_empleado,)).fetchone()
@@ -120,6 +125,8 @@ class EmpleadoRepository(RepositorioBase):
     @staticmethod
     def _construir_empleado(row) -> Empleado:
         usuario = None
+        if row[6] is not None:
+            usuario = Usuario(row[6], row[7], row[8], row[9], row[10])
         if row[5] is not None:
-            usuario = Usuario(row[5], row[6], row[7], row[8], row[9])
+            return Gerente(row[0], row[1], row[2], row[4], row[5], usuario)
         return Empleado(row[0], row[1], row[2], row[3], row[4], usuario)
