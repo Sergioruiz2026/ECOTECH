@@ -46,7 +46,7 @@ class TestRegistroUsuario(BaseTestMenuApp):
     @patch("builtins.input")
     def test_registrar_usuario_persiste_password(self, mock_input, mock_getpass):
         # Simula: nombre, email, rol=admin (primer usuario)
-        mock_input.side_effect = ["Sergio Ruiz", "sergio@ecotech.com", "admin"]
+        mock_input.side_effect = ["Sergio Ruiz", "sergio@ecotech.com", "admin",""]
         # Simula: contraseña y confirmación
         mock_getpass.side_effect = ["claveSuperSegura123", "claveSuperSegura123"]
 
