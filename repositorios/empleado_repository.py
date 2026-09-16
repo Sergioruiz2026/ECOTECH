@@ -47,6 +47,12 @@ class EmpleadoRepository(RepositorioBase):
                 ),
             )
             empleado._id_empleado = cursor.lastrowid
+            if isinstance(empleado, Gerente):
+                cursor.execute(
+                    "INSERT INTO gerentes (id_empleado, bono_liderazgo) "
+                    "VALUES (?, ?)",
+                    (empleado.id_empleado, empleado.bono_liderazgo),
+                )
             conexion.commit()
             return True
         except sqlite3.Error as e:

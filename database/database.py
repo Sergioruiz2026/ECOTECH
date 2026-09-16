@@ -3,9 +3,31 @@
 
 import sqlite3
 import os
+from contextlib import closing
 from typing import Optional
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "ecotech.db")
+
+
+class _ConexionSQLite:
+    def __init__(self, conexion: sqlite3.Connection):
+        self._conexion = conexion
+
+    def __enter__(self):
+        self._conexion.__enter__()
+        return self._conexion
+
+    def __exit__(self, tipo, valor, traceback):
+        try:
+            return self._conexion.__exit__(tipo, valor, traceback)
+        finally:
+            self._conexion.close()
+
+    def close(self):
+        self._conexion.close()
+
+    def __getattr__(self, nombre):
+        return getattr(self._conexion, nombre)
 
 
 class Database:
@@ -21,11 +43,11 @@ class Database:
         # Habilitar el soporte de claves foráneas en SQLite
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row  # Permite acceder a columnas por nombre
-        return conn
+        return _ConexionSQLite(conn)
 
     def inicializar_tablas(self):
         """Crea las tablas principales del sistema si aún no existen."""
-        with self.obtener_conexion() as conn:
+        with closing(self.obtener_conexion()) as conn:
             cursor = conn.cursor()
 
             # Tabla Usuarios (Clase Base)
