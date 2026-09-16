@@ -1,111 +1,111 @@
+"""
+Pruebas para MenuApp (main.py), adaptadas a la versión actual basada en clase + SQLite.
+
+Estrategia:
+- Cada test usa una base de datos SQLite temporal (nunca la real ecotech.db).
+- Se simulan las entradas de teclado con unittest.mock.patch sobre builtins.input
+  y getpass.getpass.
+- Se llama directamente a los métodos de MenuApp, no al bucle del menú.
+"""
+
+import os
 import unittest
 from unittest.mock import patch
 
-import main
-from modelos import Departamento, Gerente, Proyecto
+from database.database import Database
+from main import MenuApp
 
 
-class TestMenuDepartamentos(unittest.TestCase):
+class BaseTestMenuApp(unittest.TestCase):
+    """Clase base: crea una BD temporal distinta para cada test y la borra al final."""
 
     def setUp(self):
-        self.departamentos_originales = main.departamentos
-        main.departamentos = [Departamento(1, "RRHH")]
+        self.db_path = "test_ecotech_tmp.db"
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+        self.db = Database(self.db_path)
+        self.db.inicializar_tablas()
+
+        # MenuApp crea su propia Database() por defecto; se la reemplazamos
+        # después de construirla para que use la de prueba.
+        self.app = MenuApp()
+        self.app.repo_usuario.db = self.db
+        self.app.repo_empleado.db = self.db
+        self.app.repo_departamento.db = self.db
+        self.app.repo_proyecto.db = self.db
+        self.app.repo_registro.db = self.db
 
     def tearDown(self):
-        main.departamentos = self.departamentos_originales
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
 
-    def test_seleccionar_departamento_existente(self):
-        with patch("builtins.input", return_value="1"):
-            nombre = main.solicitar_nombre_departamento()
 
-        self.assertIsNone(nombre)
+class TestRegistroUsuario(BaseTestMenuApp):
 
-    def test_rechaza_nombre_vacio_y_duplicado(self):
-        respuestas = iter(["0", "", "rrhh", "Finanzas"])
-        with patch("builtins.input", side_effect=respuestas):
-            nombre = main.solicitar_nombre_departamento()
+    @patch("getpass.getpass")
+    @patch("builtins.input")
+    def test_registrar_usuario_persiste_password(self, mock_input, mock_getpass):
+        # Simula: nombre, email, rol=admin (primer usuario)
+        mock_input.side_effect = ["Sergio Ruiz", "sergio@ecotech.com", "admin"]
+        # Simula: contraseña y confirmación
+        mock_getpass.side_effect = ["claveSuperSegura123", "claveSuperSegura123"]
 
-        self.assertEqual(nombre, "Finanzas")
+        self.app.registrar_usuario(permitir_admin=True)
 
-    def test_reintenta_correo_invalido(self):
-        empleados_originales = main.empleados
-        secuencia_original = main.id_usuario_seq
-        main.empleados = []
-        empleados_creados = main.empleados
-        main.id_usuario_seq = 1
-        respuestas = iter([
-            "1", "Ana Torres", "correo-invalido", "ana@ecotech.com",
-            "25", "Analista"
-        ])
-        try:
-            with patch("builtins.input", side_effect=respuestas), patch.object(main, "auto_guardar"):
-                main.registrar_empleado_o_gerente()
-        finally:
-            main.empleados = empleados_originales
-            main.id_usuario_seq = secuencia_original
+        usuarios = self.app.repo_usuario.obtener_todos()
+        self.assertEqual(len(usuarios), 1)
+        # Este es el bug que corregimos con el prompt 1: el hash debe quedar guardado.
+        self.assertIsNotNone(usuarios[0].password_hash)
+        self.assertTrue(usuarios[0].verificar_contraseña("claveSuperSegura123"))
 
-        self.assertEqual(len(empleados_creados), 1)
-        self.assertEqual(empleados_creados[0].email, "ana@ecotech.com")
 
-    def test_modifica_proyecto(self):
-        proyectos_originales = main.proyectos
-        main.proyectos = [Proyecto(1, "Inicial", 1000)]
-        try:
-            respuestas = iter(["3", "1", "Actualizado", "2000", "En Progreso"])
-            with patch("builtins.input", side_effect=respuestas), patch.object(main, "auto_guardar"):
-                main.modificar_datos()
-            self.assertEqual(main.proyectos[0].nombre, "Actualizado")
-            self.assertEqual(main.proyectos[0].presupuesto, 2000)
-            self.assertEqual(main.proyectos[0].estado, "En Progreso")
-        finally:
-            main.proyectos = proyectos_originales
+class TestDepartamentoConGerente(BaseTestMenuApp):
 
-    def test_elimina_departamento_con_confirmacion(self):
-        departamentos_originales = main.departamentos
-        main.departamentos = [Departamento(1, "Temporal")]
-        try:
-            respuestas = iter(["2", "1", "s"])
-            with patch("builtins.input", side_effect=respuestas), patch.object(main, "auto_guardar"):
-                main.eliminar_datos()
-            self.assertEqual(main.departamentos, [])
-        finally:
-            main.departamentos = departamentos_originales
+    def test_departamento_conserva_gerente_y_empleados_al_recargar(self):
+        # Creamos un gerente directamente vía repositorio (sin pasar por el menú)
+        from modelos.gerente import Gerente
+        gerente = Gerente(0, "Carla Jefa", "carla@ecotech.com", tarifa_hora=40.0)
+        self.app.repo_empleado.crear(gerente)
 
-    def test_repite_confirmacion_si_la_respuesta_no_es_s_o_n(self):
-        respuestas = iter(["x", "n"])
-        with patch("builtins.input", side_effect=respuestas):
-            confirmacion = main.solicitar_confirmacion("¿Continuar?")
+        from modelos.departamento import Departamento
+        depto = Departamento(0, "TI")
+        depto.agregar_empleado(gerente)
+        self.app.repo_departamento.crear(depto)
 
-        self.assertEqual(confirmacion, "n")
+        # Recargamos desde la base de datos, como si fuera otra sesión del programa
+        recargado = self.app.repo_departamento.obtener_por_id(depto.id_departamento)
 
-    def test_crear_departamento_repite_confirmacion_invalida(self):
-        departamentos_originales = main.departamentos
-        empleados_originales = main.empleados
-        secuencia_original = main.id_depto_seq
-        main.departamentos = []
-        main.empleados = [Gerente(1, "Carlos Ruiz", "carlos@ecotech.com", 40, 500)]
-        main.id_depto_seq = 1
-        try:
-            respuestas = iter(["Ventas", "x", "n"])
-            with patch("builtins.input", side_effect=respuestas), patch.object(main, "auto_guardar"):
-                main.crear_departamento()
-            self.assertEqual(len(main.departamentos), 1)
-            self.assertIsNone(main.departamentos[0].gerente)
-        finally:
-            main.departamentos = departamentos_originales
-            main.empleados = empleados_originales
-            main.id_depto_seq = secuencia_original
+        # Esto es lo que arreglamos con el prompt 2 y el prompt 4:
+        self.assertEqual(len(recargado.empleados), 1)
+        self.assertIsNotNone(recargado.obtener_gerente())
+        self.assertEqual(recargado.obtener_gerente().nombre, "Carla Jefa")
 
-    def test_eliminar_departamento_repite_confirmacion_invalida(self):
-        departamentos_originales = main.departamentos
-        main.departamentos = [Departamento(3, "qq")]
-        try:
-            respuestas = iter(["2", "1", "x", "n"])
-            with patch("builtins.input", side_effect=respuestas), patch.object(main, "auto_guardar"):
-                main.eliminar_datos()
-            self.assertEqual(len(main.departamentos), 1)
-        finally:
-            main.departamentos = departamentos_originales
+
+class TestRegistroTiempoValidacionHoras(BaseTestMenuApp):
+
+    def test_rechaza_mas_de_24_horas(self):
+        from modelos.empleado import Empleado
+        from modelos.proyecto import Proyecto
+        from modelos.registro_tiempo import RegistroTiempo
+
+        empleado = Empleado(0, "Ana", "ana@ecotech.com", "Dev", 25.0)
+        self.app.repo_empleado.crear(empleado)
+        proyecto = Proyecto(0, "Panel Solar", 5000.0)
+        self.app.repo_proyecto.crear(proyecto)
+
+        # Esto es lo que arreglamos con el prompt 5: debe lanzar ValueError.
+        with self.assertRaises(ValueError):
+            RegistroTiempo(0, empleado, proyecto, 30.0)
+
+    def test_acepta_horas_dentro_del_rango(self):
+        from modelos.empleado import Empleado
+        from modelos.proyecto import Proyecto
+        from modelos.registro_tiempo import RegistroTiempo
+
+        empleado = Empleado(0, "Ana", "ana@ecotech.com", "Dev", 25.0)
+        proyecto = Proyecto(0, "Panel Solar", 5000.0)
+        registro = RegistroTiempo(0, empleado, proyecto, 8.0)
+        self.assertEqual(registro.horas_trabajadas, 8.0)
 
 
 if __name__ == "__main__":

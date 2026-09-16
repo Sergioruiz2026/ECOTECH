@@ -20,7 +20,9 @@ class TestPersistenciaEcoTech(unittest.TestCase):
         # Objetos de prueba
         self.emp = Empleado(1, "Laura Torres", "laura@ecotech.com", "Analista", 30.0)
         self.ger = Gerente(2, "Pedro Soto", "pedro@ecotech.com", tarifa_hora=50.0, bono_liderazgo=1000.0)
-        self.depto = Departamento(1, "I+D", self.ger)
+        self.depto = Departamento(1, "I+D")
+        self.depto = Departamento(1, "I+D")
+        self.depto.agregar_empleado(self.ger)
         self.depto.agregar_empleado(self.emp)
         self.proy = Proyecto(1, "EcoSoftware", 5000.0)
         self.reg = RegistroTiempo(1, self.emp, self.proy, 5.0, descripcion="Diseño de módulo")

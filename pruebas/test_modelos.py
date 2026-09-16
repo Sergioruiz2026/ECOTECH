@@ -39,10 +39,11 @@ class TestModelosEcoTech(unittest.TestCase):
 
     def test_departamento_agregar_empleado(self):
         """Verifica la asignación de empleados a un departamento."""
-        depto = Departamento(1, "Ingeniería", self.gerente)
+        depto = Departamento(1, "Ingeniería")
+        depto.agregar_empleado(self.gerente)
         depto.agregar_empleado(self.empleado)
-
-        self.assertEqual(len(depto.empleados), 1)
+        
+        self.assertEqual(depto.obtener_gerente(), self.gerente)
         self.assertIn(self.empleado, depto.empleados)
 
     def test_calculo_costo_registro_tiempo(self):
